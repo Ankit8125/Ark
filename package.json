@@ -5,6 +5,18 @@
   "engines": {
     "node": ">=24 <25"
   },
+  "scripts": {
+    "dev": "pnpm --dir apps/web dev --host 127.0.0.1",
+    "build": "pnpm --dir apps/web build",
+    "lint": "pnpm --dir apps/web lint",
+    "setup:env": "node scripts/setup-env.mjs",
+    "db:up": "docker compose --env-file .env -f infra/local/compose.yaml up -d --wait",
+    "db:stop": "docker compose --env-file .env -f infra/local/compose.yaml stop",
+    "db:status": "docker compose --env-file .env -f infra/local/compose.yaml ps",
+    "check:staged": "node scripts/check-staged.mjs",
+    "test:guard": "node --test scripts/check-staged.test.mjs",
+    "hooks:install": "git config --local core.hooksPath .githooks"
+  },
   "devDependencies": {
     "@playwright/test": "1.63.0",
     "prettier": "3.9.9",
