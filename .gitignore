@@ -1,0 +1,25 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+.data/
+playwright-report/
+test-results/
+*.log
+
+# Private local material: never publish with the independent project.
+ark-cursor-handoff.md
+ark-final-versioned-implementation-plan.md
+ark-laptop-build-plan.md
+ark-research-refresh-2026-09-20.md
+.secrets/
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Local editor/system state.
+.DS_Store
+Thumbs.db

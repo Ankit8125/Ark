@@ -1,0 +1,13 @@
+{
+  "packageManager": "pnpm@10.34.5",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "prettier": "3.9.9",
+    "vitest": "5.0.1"
+  }
+}
