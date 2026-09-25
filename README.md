@@ -7,9 +7,9 @@ An independent, self-hosted development platform being built incrementally: a ta
 ## Start reading
 
 - [Notes index](notes/README.md): where to find explanations, progress, and decisions.
-- [Learning guide](notes/learning-guide.md): what each setup step does, with flows and examples.
-- [Progress](notes/progress.md): completed work, verification evidence, limitations, and next steps.
-- [Findings](notes/findings.md): codebase facts and decisions to preserve.
+- [Learning guides](notes/learning/README.md): focused explanations with flows and examples.
+- [Progress](notes/progress/README.md): current checkpoint plus separate dated change records.
+- [Findings](notes/findings/README.md): codebase facts and decisions organized by topic.
 - [Architecture](docs/architecture.md) and [roadmap](docs/roadmap.md): the independent product's intended design and release boundaries.
 - [Contributor/agent instructions](AGENTS.md): how to keep changes, notes, and Git history aligned.
 
@@ -47,7 +47,7 @@ Stop the web server with Ctrl+C and the database with `pnpm.cmd db:stop`. The na
 ## Before each commit
 
 1. Make one bounded change and update the relevant notes in the same change.
-2. Run applicable checks and record their actual outcomes in `notes/progress.md`.
+2. Run applicable checks, add a dated entry under `notes/progress/`, and update its index.
 3. Stage explicit files; inspect `git diff --cached` locally.
 4. Run `pnpm.cmd check:staged`, then commit with a descriptive message.
 5. Push the reviewed commits and verify that the remote branch matches local HEAD.

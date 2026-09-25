@@ -1,6 +1,6 @@
 # Release roadmap
 
-This is intended work. The [progress notebook](../notes/progress.md) records implemented and verified behavior. Releases are cumulative; do not label a milestone complete from a scaffold or a plan alone.
+This is intended work. The [progress notebook](../notes/progress/README.md) records implemented and verified behavior. Releases are cumulative; do not label a milestone complete from a scaffold or a plan alone.
 
 ## V0 - Internal end-to-end prototype
 

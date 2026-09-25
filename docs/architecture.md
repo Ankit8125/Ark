@@ -1,6 +1,6 @@
 # Intended architecture
 
-This is the independent project's design, not a description of an existing private platform. Consult [progress](../notes/progress.md) for what has actually been built.
+This is the independent project's design, not a description of an existing private platform. Consult [progress](../notes/progress/README.md) for what has actually been built.
 
 ## Product and boundaries
 

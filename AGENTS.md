@@ -2,10 +2,10 @@
 
 ## Read first
 
-1. `notes/progress.md` for the current checkpoint and next bounded step.
-2. `notes/findings.md` for facts, constraints, and open decisions.
+1. `notes/progress/README.md` and its latest dated entry for the current checkpoint and next bounded step.
+2. `notes/findings/README.md` and relevant topic files for facts, constraints, and open decisions.
 3. `docs/architecture.md` and `docs/roadmap.md` for intended behavior.
-4. `notes/learning-guide.md` for the user-facing explanation and setup history.
+4. `notes/learning/README.md` and relevant topic guides for user-facing explanations.
 
 Code, migrations, and reproducible check results establish implemented behavior. Plans describe intended behavior; do not confuse them. Keep the current snapshot in the notes aligned with changes and preserve dated history.
 
@@ -19,9 +19,10 @@ Code, migrations, and reproducible check results establish implemented behavior.
 
 ## Persistent notes
 
-- Update `notes/progress.md` for every meaningful step: date, what changed, why, files, checks, result, next step, and relevant commit references.
-- Update `notes/learning-guide.md` when the user's understanding or commands need to change.
-- Update `notes/findings.md` when a new fact, decision, incompatibility, or resolved uncertainty matters to future work.
+- Add a dated `notes/progress/YYYY-MM-DD-NN-topic.md` for every meaningful step: purpose, files, checks, result, next step, and relevant commit references. Update `notes/progress/README.md` with the current checkpoint and a link.
+- Add or update focused guides under `notes/learning/` when the user's understanding or commands need to change; keep its README as the index.
+- Add or update relevant topic files under `notes/findings/` when a new fact, decision, incompatibility, or resolved uncertainty matters to future work; keep its README as the index.
+- Keep indexes concise. Split growing topics into linked files instead of accumulating all history or findings in one large document.
 - Update the architecture/roadmap when an intended contract changes; explain the reason.
 - Use repository notes for durable project context. Do not depend on a previous chat being available.
 
