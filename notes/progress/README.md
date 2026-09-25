@@ -27,7 +27,9 @@ Last updated: 2026-09-25 (Asia/Kolkata). Keep this page concise; record each mea
 
 ## Synchronization status
 
-The initial three commits through `7271c36` were pushed to GitHub and independently verified. The subsequent notes reorganization is currently local and awaiting its reviewed commit/push. Do not treat those working-tree edits as published.
+The initial three commits through `7271c36` and the notebook-reorganization commit `782189a` were pushed to GitHub. A separate remote check returned `782189a663474c982cd96c7b4d83ebc7bff23008`, exactly matching local HEAD at the reorganization checkpoint. The branch tracks `origin/main` and had no uncommitted changes at that checkpoint.
+
+This synchronization report is a subsequent documentation-only update. Use `git log -- notes/progress/README.md` for its commit and `git status --short --branch` for the live working-tree state; the recorded SHA deliberately identifies the verified reorganization snapshot.
 
 ## Next bounded step
 
