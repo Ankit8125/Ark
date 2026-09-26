@@ -30,3 +30,9 @@ Oxlint is intentionally retained rather than switching the working starter to ES
 `dev` uses concurrently to start API and web and stop its sibling when one exits. Shared packages build before startup; shared-source changes require a rebuild/restart. The deployment boundary is loopback development. Windows container isolation for future execution has not been implemented or proven.
 
 The root unit-test command also discovers `apps/web/src/**/*.test.tsx`. Those DOM tests use development-only jsdom and real React roots to verify render recovery; they are distinct from browser walkthrough evidence. jsdom 30.1.1 requires Node 24.15 or newer on the 24.x line, so the root engine constraint now states `>=24.15 <25`; the verified local Node 24.21.0 satisfies it. The [architecture guide](../learning/06-project-architecture.md) records the recommended module layout.
+
+## F009 - Maintained tooling is an explicit user requirement
+
+The user explicitly rejects deprecated or end-of-life technology. Verify official support/maintenance status and version compatibility before future technology choices or upgrades. Do not introduce deprecated scaffolding or knowingly unsupported dependencies. Prefer supported, tested versions with reproducible lockfile resolutions; newest and supported are different properties. This requirement does not authorize unrelated dependency churn.
+
+The 2026-09-26 source/lockfile check confirms Vite 8.3.1 with `@vitejs/plugin-react` 6.1.1 and React 19.3.0. There are no `create-react-app` or `react-scripts` dependencies. `createRoot()` is React's rendering API, not CRA. Official React/Vite references and the distinction are recorded in the [tooling guide](../learning/01-tools-and-workspace.md#react-vite-and-create-react-app). This targeted verification is not an exhaustive lifecycle audit of every transitive dependency.

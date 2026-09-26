@@ -28,6 +28,16 @@ The first follow-up added development commands and notes. The next increment rep
 
 The `.cmd` suffix selects the Windows launcher for npm/pnpm. It avoids accidentally selecting a PowerShell script launcher when local execution policy blocks that launcher; it does not change execution policy.
 
+## React, Vite, and Create React App
+
+Ark uses React with TypeScript and Vite. `apps/web/package.json` runs `vite` for development and `tsc -b && vite build` for production. `apps/web/vite.config.ts` enables `@vitejs/plugin-react` and forwards API requests to the separate Fastify backend. The lockfile currently resolves React 19.3.0 and Vite 8.3.1.
+
+`createRoot()` in `apps/web/src/main.tsx` is React DOM's browser-rendering API: it mounts the application into the root element in `index.html`. It is unrelated to the `create-react-app` scaffolding tool. Neither `create-react-app` nor `react-scripts` is present in the project manifests or lockfile.
+
+React [deprecated Create React App for new applications](https://react.dev/blog/2025/02/14/sunsetting-create-react-app) on February 14, 2025. React's [build-from-scratch guide](https://react.dev/learn/build-a-react-app-from-scratch) documents Vite as an option; frameworks are also supported choices. Ark's separate browser frontend and Fastify API already use the Vite approach, so no migration is needed. See the [Vite guide](https://vite.dev/guide/) and [React rendering reference](https://react.dev/reference/react-dom/client/createRoot).
+
+The user explicitly requires maintained, supported technology. Before adopting or upgrading tooling, check official maintenance/deprecation status and compatibility with the project's pinned versions. A version older than the newest release is not automatically end-of-life; supported releases and reproducible checks matter. Do not introduce deprecated scaffolding or knowingly end-of-life dependencies.
+
 ## Understand the project files
 
 [`package.json`](../../package.json) at the root describes shared project requirements and tooling. Immediately after the manual bootstrap, it had no root scripts. The follow-up setup adds these commands so you can work from the repository root:

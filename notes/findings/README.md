@@ -4,7 +4,7 @@ Keep facts and decisions in focused files; distinguish verified behavior from in
 
 | Topic                                             | Findings                                                                      |
 | ------------------------------------------------- | ----------------------------------------------------------------------------- |
-| [Codebase and tooling](codebase-and-tooling.md)   | F001 package map; F002 lockfile; F006 strictness and lint decisions           |
+| [Codebase and tooling](codebase-and-tooling.md)   | F001 package map; F002 lockfile; F006 strictness/lint; F009 maintained tooling |
 | [Database](database.md)                           | F003 port/authentication; F004 role lifecycle; F008 migration/test boundaries |
 | [Publication and Git](publication-and-git.md)     | F005 private research exclusion; F007 commit safety and hooks                 |
 | [Identity and security](identity-and-security.md) | API, session/access invariants, evidence and limits                           |
