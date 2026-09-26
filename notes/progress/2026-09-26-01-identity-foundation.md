@@ -50,4 +50,4 @@ Read [identity and sessions](../learning/05-identity-and-sessions.md), [identity
 
 Next: V0.2's first team-owned workspace CRUD slice, with revision conflicts and backend permission tests before its UI.
 
-Commit reference: the implementation commit containing this record, retrievable with `git log --oneline -- notes/progress/2026-09-26-01-identity-foundation.md`. A subsequent receipt records its verified GitHub hash without trying to embed a commit's own hash inside itself.
+Commit reference: `28140ca` (`feat: implement local identity foundation`). The [subsequent synchronization receipt](2026-09-26-02-identity-sync.md) records its full verified GitHub hash and final publication checks.

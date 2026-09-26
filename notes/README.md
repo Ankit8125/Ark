@@ -17,6 +17,7 @@ notes/
     2026-09-25-01-bootstrap.md
     2026-09-25-02-notes-organization.md
     2026-09-26-01-identity-foundation.md
+    2026-09-26-02-identity-sync.md
   findings/
     README.md
     codebase-and-tooling.md

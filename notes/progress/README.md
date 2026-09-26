@@ -26,10 +26,11 @@ Normal startup port 5173 is occupied by an older server in this environment. Sto
 | 2026-09-25 / 01 | [Bootstrap and initial GitHub sync](2026-09-25-01-bootstrap.md) |
 | 2026-09-25 / 02 | [Organize notes](2026-09-25-02-notes-organization.md) |
 | 2026-09-26 / 01 | [Identity foundation and verification](2026-09-26-01-identity-foundation.md) |
+| 2026-09-26 / 02 | [Verified identity checkpoint on GitHub](2026-09-26-02-identity-sync.md) |
 
 ## Synchronization
 
-The prior checkpoint was 1dd29df on main. This implementation and its notes are being recorded as one bounded feature checkpoint, followed by a synchronization receipt. Use `git status --short --branch` and `git log --oneline -5` for live status; the dated record holds verified commit references once available.
+Implementation commit `28140ca` was pushed to main and independently matched against GitHub. The [synchronization receipt](2026-09-26-02-identity-sync.md) records the full hash and final checks. This receipt is a subsequent documentation-only update; use `git status --short --branch` and `git log --oneline -5` for live status.
 
 ## Next bounded step
 
