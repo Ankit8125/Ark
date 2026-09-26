@@ -12,12 +12,14 @@ Updated 2026-09-26 (Asia/Kolkata). Keep this page concise; detailed evidence bel
 | Development setup | No user accounts created; first-owner setup remains available |
 | Identity | One-use atomic bootstrap, Argon2id, hashed opaque sessions, revocation checks |
 | Authorization | Explicit team membership and database last-owner guard |
-| Automated tests | 3 contract + 15 PostgreSQL/process-restart + 7 staged-guard checks passed |
+| Automated tests | 31 unit/React DOM + 15 PostgreSQL/process-restart + 7 staged-guard checks passed |
 | UI | Actual setup/login/logout/reload/offline-retry flow checked; desktop/mobile inspected |
 | Tooling | Strict types, Oxlint, production build; exact commands in implementation record |
 | Scope | Loopback development; no production deployment or execution workflow |
 
-Normal startup port 5173 is occupied by an older server in this environment. Stop that development terminal before `pnpm.cmd dev`. Verification used separate test ports and a separate database.
+The [staff-engineer architecture review](2026-09-26-03-architecture-review.md) retains this structure and adds targeted render recovery, transaction cleanup, and local URL safety fixes. No new product feature was introduced. The [architecture guide](../learning/06-project-architecture.md) contains the recommended ASCII folder tree and growth decisions.
+
+The original V0.1 browser verification used separate test ports and a separate database because port 5173 was occupied at that time. If `pnpm.cmd dev` reports that port busy, stop the older development terminal first.
 
 ## Change log
 
@@ -27,10 +29,11 @@ Normal startup port 5173 is occupied by an older server in this environment. Sto
 | 2026-09-25 / 02 | [Organize notes](2026-09-25-02-notes-organization.md) |
 | 2026-09-26 / 01 | [Identity foundation and verification](2026-09-26-01-identity-foundation.md) |
 | 2026-09-26 / 02 | [Verified identity checkpoint on GitHub](2026-09-26-02-identity-sync.md) |
+| 2026-09-26 / 03 | [Architecture review and focused hardening](2026-09-26-03-architecture-review.md) |
 
 ## Synchronization
 
-Implementation commit `28140ca` was pushed to main and independently matched against GitHub. The [synchronization receipt](2026-09-26-02-identity-sync.md) records the full hash and final checks. This receipt is a subsequent documentation-only update; use `git status --short --branch` and `git log --oneline -5` for live status.
+Implementation commit `28140ca` and receipt `da04cbe` were pushed to main. The architecture review began from a fetched, matching local/remote `da04cbe`. Its [dated record](2026-09-26-03-architecture-review.md) records validation and publication checks; use `git status --short --branch` and `git log --oneline -5` for live status.
 
 ## Next bounded step
 

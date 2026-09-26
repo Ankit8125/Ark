@@ -2,31 +2,23 @@ import { randomBytes } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { parseEnv } from "node:util";
 import { createPool, migrate } from "@ark/db";
+import { parseLocalDatabaseUrl } from "./lib/local-database-url.mjs";
 
 const envPath = new URL("../.env", import.meta.url);
 const raw = readFileSync(envPath, "utf8");
 const env = parseEnv(raw);
 const adminUrl = env.MIGRATION_DATABASE_URL ?? env.DATABASE_URL;
 if (!adminUrl) throw new Error("Run setup:env first.");
-let admin;
-try {
-  admin = new URL(adminUrl);
-} catch {
-  throw new Error("Local database URL is invalid. Check the ignored .env file.");
-}
-if (
-  !["localhost", "127.0.0.1"].includes(admin.hostname) ||
-  admin.pathname !== "/ark_dev" ||
-  admin.port !== "5434"
-) {
-  throw new Error(
-    "This helper only manages the local ark_dev database at port 5434.",
-  );
-}
+const admin = parseLocalDatabaseUrl(adminUrl, "ark_dev", "5434");
 const mode = process.argv[2];
 if (!["prepare", "migrate", "test-prepare"].includes(mode))
   throw new Error("Choose prepare, migrate, or test-prepare.");
-const pool = createPool(adminUrl);
+// Validate every externally supplied connection before migration or role writes.
+const configuredRuntime =
+  mode === "prepare"
+    ? parseLocalDatabaseUrl(env.DATABASE_URL ?? adminUrl, "ark_dev", "5434")
+    : undefined;
+const pool = createPool(admin.toString());
 const updates = {};
 function saveEnv() {
   let next = raw;
@@ -55,7 +47,7 @@ try {
   } else {
     await migrate(pool);
     if (mode === "prepare") {
-      const existing = new URL(env.DATABASE_URL ?? adminUrl);
+      const existing = configuredRuntime ?? admin;
       let runtimeUrl = existing;
       const role = await pool.query(
         "SELECT 1 FROM pg_roles WHERE rolname = 'ark_app'",

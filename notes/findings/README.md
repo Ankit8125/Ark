@@ -9,6 +9,7 @@ Keep facts and decisions in focused files; distinguish verified behavior from in
 | [Publication and Git](publication-and-git.md)     | F005 private research exclusion; F007 commit safety and hooks                 |
 | [Identity and security](identity-and-security.md) | API, session/access invariants, evidence and limits                           |
 | [Browser verification](browser-verification.md)   | Design direction, disposable fixtures, CLI walkthrough                        |
+| [Architecture review](architecture-review.md)     | Module boundaries, render recovery, rollback cleanup, local URL validation     |
 
 ## Next decisions
 

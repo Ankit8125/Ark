@@ -14,7 +14,7 @@ The first follow-up added development commands and notes. The next increment rep
 
 | Tool or file   | Purpose in Ark                                                                                                       |
 | -------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Node.js        | Runs JavaScript tools and the API outside the browser. The runner comes later. The root manifest requires Node 24.x. |
+| Node.js        | Runs JavaScript tools and the API outside the browser. The runner comes later. The root manifest requires Node 24.15 or newer within 24.x, including the DOM test toolchain. |
 | TypeScript     | Adds static checks to application code. A `.tsx` file is TypeScript that can contain React UI markup.                |
 | pnpm           | Installs dependencies and runs package scripts. The root manifest pins pnpm `10.34.5`.                               |
 | pnpm workspace | Groups several related packages in one repository and lets them share a lockfile and local dependencies.             |

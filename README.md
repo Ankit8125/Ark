@@ -15,7 +15,7 @@ An independent, self-hosted development platform being built incrementally: a ta
 
 ## Local setup on Windows
 
-Use Node.js 24, pnpm 10 (the exact version is pinned in `package.json`), Git, and Docker Desktop with its Linux engine running. Run commands from the repository root in PowerShell.
+Use Node.js 24.15 or newer within 24.x, pnpm 10 (the exact version is pinned in `package.json`), Git, and Docker Desktop with its Linux engine running. Run commands from the repository root in PowerShell.
 
 ```powershell
 npm.cmd install --global pnpm@10.34.5

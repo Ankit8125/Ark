@@ -20,16 +20,22 @@ export async function withTransaction<T>(
   fn: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
   const client = await pool.connect();
+  let discardClient = false;
   try {
     await client.query("BEGIN");
     const result = await fn(client);
     await client.query("COMMIT");
     return result;
   } catch (error) {
-    await client.query("ROLLBACK");
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // Preserve the original failure; an uncertain connection must not be reused.
+      discardClient = true;
+    }
     throw error;
   } finally {
-    client.release();
+    client.release(discardClient);
   }
 }
 

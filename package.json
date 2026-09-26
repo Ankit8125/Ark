@@ -3,7 +3,7 @@
   "type": "module",
   "private": true,
   "engines": {
-    "node": ">=24 <25"
+    "node": ">=24.15 <25"
   },
   "scripts": {
     "dev": "pnpm build:shared && concurrently --kill-others --names api,web \"pnpm dev:api\" \"pnpm dev:web\"",
@@ -19,7 +19,7 @@
     "dev:api": "pnpm --filter @ark/api dev",
     "db:test:prepare": "node scripts/database.mjs test-prepare",
     "dev:web": "pnpm --dir apps/web dev",
-    "test:unit": "pnpm build:shared && vitest run tests/unit",
+    "test:unit": "pnpm build:shared && vitest run tests/unit apps/web/src",
     "build:shared": "pnpm --filter @ark/contracts --filter @ark/db build",
     "db:migrate": "pnpm build:shared && node scripts/database.mjs migrate",
     "db:prepare": "pnpm build:shared && node scripts/database.mjs prepare",
@@ -28,18 +28,19 @@
     "test:browser:api": "node --env-file=.env --import tsx tests/helpers/browser-server.ts"
   },
   "devDependencies": {
-    "@playwright/test": "1.63.0",
-    "prettier": "3.9.9",
-    "vitest": "5.0.1",
-    "concurrently": "^9.2.1",
-    "tsx": "^4.20.6",
-    "@types/node": "^24.13.3",
-    "typescript": "~6.0.2",
-    "oxlint": "^1.81.0",
-    "@types/pg": "^8.15.5",
-    "@ark/db": "workspace:*",
     "@ark/api": "workspace:*",
     "@ark/contracts": "workspace:*",
-    "pg": "^8.16.3"
+    "@ark/db": "workspace:*",
+    "@playwright/test": "1.63.0",
+    "@types/node": "^24.13.3",
+    "@types/pg": "^8.15.5",
+    "concurrently": "^9.2.1",
+    "jsdom": "^30.1.1",
+    "oxlint": "^1.81.0",
+    "pg": "^8.16.3",
+    "prettier": "3.9.9",
+    "tsx": "^4.20.6",
+    "typescript": "~6.0.2",
+    "vitest": "5.0.1"
   }
 }

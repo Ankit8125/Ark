@@ -1,24 +1,14 @@
 import { randomBytes } from "node:crypto";
 import { createPool, migrate } from "@ark/db";
+import { parseLocalDatabaseUrl } from "../../scripts/lib/local-database-url.mjs";
 
 export async function databaseFixture() {
   const connection = process.env.TEST_DATABASE_URL;
   if (!connection)
     throw new Error("Run pnpm db:test:prepare. TEST_DATABASE_URL is required.");
-  let url: URL;
-  try {
-    url = new URL(connection);
-  } catch {
-    throw new Error("TEST_DATABASE_URL is invalid; its value is withheld.");
-  }
-  if (
-    url.pathname !== "/ark_test" ||
-    !["127.0.0.1", "localhost"].includes(url.hostname)
-  ) {
-    throw new Error("Tests require the separate local ark_test database.");
-  }
+  const url = parseLocalDatabaseUrl(connection, "ark_test");
   const schema = `ark_test_${randomBytes(10).toString("hex")}`;
-  const admin = createPool(connection);
+  const admin = createPool(url.toString());
   await admin.query(`CREATE SCHEMA "${schema}"`);
   url.searchParams.set("options", `-csearch_path=${schema}`);
   const pool = createPool(url.toString());

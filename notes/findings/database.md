@@ -19,3 +19,5 @@ The Compose `ark` user remains the local administrator. `MIGRATION_DATABASE_URL`
 `001_identity.sql` is applied to `ark_dev`. Add later migration files and register their versions instead of editing this one. The runner serializes migration writers, checks stored checksums, and rolls back on failure. Server startup never migrates.
 
 Tests require local `ark_test` and generate unique `ark_test_<hex>` schemas. Cleanup validates database and schema names. Real development setup remains pending; browser accounts are disposable fixtures. Unexpectedly killed tests can leave their own schema behind; inspect and target only those schemas. There is no database-wide reset command.
+
+The architecture review hardened helper/fixture URL validation against driver query overrides and made failed rollback discard the connection while preserving the original exception. See [resolved findings](architecture-review.md). No applied SQL migration or database role changed in that review.
