@@ -1,32 +1,13 @@
-# React + TypeScript + Vite
+# Ark web
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React/Vite frontend for the local identity foundation. Start the full application from the repository root with `pnpm.cmd dev`; setup and role-aware commands are documented in the [root README](../../README.md).
 
-Currently, two official plugins are available:
+- `src/App.tsx`: setup/session guards and routing.
+- `src/AuthPage.tsx`: shared-contract setup/login forms and accessible errors.
+- `src/Shell.tsx`: explicit team access, current context, account menu, honest future-feature states.
+- `src/api.ts`: validated API responses and same-origin cookie requests.
+- `src/index.css` and `src/App.module.css`: tokens and responsive components.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The Vite server binds 127.0.0.1:5173 and proxies /api to 127.0.0.1:3001. It refuses to silently choose another port because the API enforces exact browser origins. `ARK_API_TARGET` is an optional loopback-only proxy override for browser fixtures. Static preview has no API proxy.
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Use root build, typecheck, lint, and test commands. See [browser verification](../../notes/findings/browser-verification.md) for acceptance evidence. There is no runner or session-execution UI yet.

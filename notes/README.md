@@ -11,15 +11,19 @@ notes/
     02-frontend-and-data-flow.md
     03-local-database.md
     04-git-and-safe-sync.md
+    05-identity-and-sessions.md
   progress/
     README.md
     2026-09-25-01-bootstrap.md
     2026-09-25-02-notes-organization.md
+    2026-09-26-01-identity-foundation.md
   findings/
     README.md
     codebase-and-tooling.md
     database.md
     publication-and-git.md
+    identity-and-security.md
+    browser-verification.md
 ```
 
 | Folder | Purpose | How it grows |

@@ -7,6 +7,8 @@ coverage/
 .data/
 playwright-report/
 test-results/
+output/playwright/
+.playwright-cli/
 *.log
 
 # Private local material: never publish with the independent project.

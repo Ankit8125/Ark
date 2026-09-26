@@ -12,7 +12,7 @@ Code, migrations, and reproducible check results establish implemented behavior.
 ## Scope and communication
 
 - Explain the purpose and data flow of each bounded change in plain language.
-- The current checkpoint is a frontend/database starter, not a completed V0.1 release.
+- The current checkpoint is the local V0.1 identity foundation. Session execution, catalog editing, invitations, and administration UI are not implemented.
 - Follow shared schema -> migration -> backend -> frontend within a feature increment. Do not replace the agreed architecture or implement later releases merely because their libraries are available.
 - Before calling a milestone complete, meet its acceptance criteria and record actual checks, skipped checks, and limitations.
 - Leave paid model calls, cloud provisioning, deployment, and unrelated external actions outside ordinary local-development work unless requested.
@@ -39,10 +39,14 @@ Code, migrations, and reproducible check results establish implemented behavior.
 ## Commands and Git history
 
 - Windows commands use `pnpm.cmd` to avoid PowerShell launcher-policy problems.
-- `pnpm.cmd build`, `pnpm.cmd lint`, `pnpm.cmd test:guard` are current checks.
+- Current checks: `pnpm.cmd build`, `lint`, `typecheck`, `test:unit`, `test:integration`, and `test:guard`.
 - `pnpm.cmd setup:env` preserves an existing local environment file.
 - `pnpm.cmd db:up`, `db:status`, `db:stop` operate only the declared local Compose project.
 - Install the local hook with `pnpm.cmd hooks:install` after a fresh clone.
 - Record meaningful, reviewable steps in commits. Do not manufacture commits for historical commands that ran before Git history existed.
 - For authorized synchronization, fetch/inspect the destination, preserve remote work, push without force, and compare remote HEAD with local HEAD.
-- Authentication/API migrations and platform test suites do not exist yet. Do not report these as passing or runnable.
+- `pnpm.cmd db:prepare` explicitly applies migrations and configures the runtime role; the API never runs migrations at startup. Never edit an applied SQL migration; add a new version.
+- `pnpm.cmd db:test:prepare` provisions local `ark_test`. Integration and browser fixtures must refuse every other database and clean up only their own generated schema.
+- Runtime uses `DATABASE_URL`; migrations use `MIGRATION_DATABASE_URL`. Never pass administrative credentials or private configuration into `VITE_*` variables.
+- `pnpm.cmd dev` starts both API and web. Keep the loopback, exact Host/Origin checks, JSON mutation requirement, HttpOnly cookie, and explicit team-membership boundary intact.
+- Keep browser checks and automated tests distinct. A successful build or a screenshot is not proof of authorization or persistence.

@@ -34,16 +34,16 @@ Planned stack: Node 24, pnpm workspaces, React/Vite, Fastify 5, Zod 4, PostgreSQ
 
 ## Domain vocabulary
 
-| Concept | Meaning |
-| --- | --- |
-| Workspace | Team-owned repository/environment/action configuration |
-| Compute | An enrolled execution host with health, grants, capacity, and dispatch approval |
-| Agent | Versioned instructions, runtime/model preference, and allowed capabilities |
-| Flow | Reusable typed stage definitions and transitions |
-| Session | One execution pinned to immutable resource versions |
-| Stage attempt | One execution of a stage; retries create new attempts |
-| Artifact | Immutable output with producer, input ancestry, checksum, and relevant revision |
-| Approval | A person's decision about one exact proposal and evidence set |
+| Concept       | Meaning                                                                         |
+| ------------- | ------------------------------------------------------------------------------- |
+| Workspace     | Team-owned repository/environment/action configuration                          |
+| Compute       | An enrolled execution host with health, grants, capacity, and dispatch approval |
+| Agent         | Versioned instructions, runtime/model preference, and allowed capabilities      |
+| Flow          | Reusable typed stage definitions and transitions                                |
+| Session       | One execution pinned to immutable resource versions                             |
+| Stage attempt | One execution of a stage; retries create new attempts                           |
+| Artifact      | Immutable output with producer, input ancestry, checksum, and relevant revision |
+| Approval      | A person's decision about one exact proposal and evidence set                   |
 
 ## Delivery and evidence
 
@@ -81,3 +81,9 @@ Keep estimated, provider-reported, settled, and unknown usage distinct. Use admi
 ## Development contract
 
 Implement shared schema -> migration -> API/tests -> frontend form in each feature increment. Backend records are authoritative; forms preserve supported fields on save/reload, handle stale revision conflicts, and treat unknown schema versions as read-only. V0.1 must include team-aware foundations rather than postponing authorization to a later security retrofit.
+
+## Implemented identity boundary
+
+The local API uses opaque 256-bit session tokens in HttpOnly, SameSite=Strict cookies, stores only their SHA-256 hashes, and checks expiry, disabled users, and revoked organization memberships. Passwords use Argon2id. Team access requires an active explicit team membership, including for an organization owner. Database triggers prevent removing or disabling the last active owner. One-time setup locks a seeded bootstrap row and commits organization, owner, team, membership, session, and audit records atomically.
+
+The runtime role is distinct from the administrative migration connection. Migrations are explicit and checksum-verified. The current runtime has scoped table privileges, including insert/read-only audit access; this is not row-level security or an untrusted SQL execution sandbox. The API runs on loopback with exact Host/Origin allowlists and rejects non-JSON mutations. Deployment over a network, invitations, password recovery, membership-management endpoints, session pruning, and a full audit UI remain future work.

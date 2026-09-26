@@ -2,7 +2,7 @@
 
 An independent, self-hosted development platform being built incrementally: a task becomes a plan, a verified change, a human-approved publication, and a draft pull request. The intended product supports multiple teams with backend-enforced permissions.
 
-**Current status: V0.1 started, incomplete.** The repository contains a React/Vite starter and local PostgreSQL configuration. No platform API, authentication, runner, AI integration, or task-to-PR workflow exists yet.
+**Current status: V0.1 identity foundation implemented.** Create the first organization, owner, and team through the local setup screen; sign in with a persistent cookie session and open the team workspace. A Fastify API checks authentication and team membership against PostgreSQL. Session execution, runner enrollment, AI integration, and task-to-PR workflows belong to later increments.
 
 ## Start reading
 
@@ -23,26 +23,33 @@ pnpm.cmd install --frozen-lockfile
 pnpm.cmd hooks:install
 pnpm.cmd setup:env
 pnpm.cmd db:up
+pnpm.cmd db:prepare
 pnpm.cmd dev
 ```
 
 `setup:env` generates local credentials only if `.env` does not exist. It never prints or overwrites existing credentials. `.env.example` contains placeholders only. If the PostgreSQL volume already exists, retain the matching `.env`; regenerating it does not change the password inside an initialized database.
 
-The frontend normally opens at `http://127.0.0.1:5173`. PostgreSQL is reachable on **127.0.0.1:5434**, forwarded to container port 5432. The frontend is not connected to PostgreSQL; a future API will mediate that access.
+Open **http://127.0.0.1:5173** and create your owner account. `dev` builds shared packages and starts the API on **127.0.0.1:3001** and the frontend together. Vite forwards `/api` requests; only the backend accesses PostgreSQL at **127.0.0.1:5434**. Ports are strict: stop an older Ark development terminal if one is already using them.
+
+`db:prepare` applies checked SQL migrations and creates a restricted `ark_app` runtime role. It preserves an older setup's administrative connection as `MIGRATION_DATABASE_URL` and writes the new runtime `DATABASE_URL` to ignored `.env`. It never creates an owner account. Keep the resulting `.env` with its matching database volume. See [identity and sessions](notes/learning/05-identity-and-sessions.md) for the full flow and limitations.
 
 ## Available checks
 
 ```powershell
 pnpm.cmd build
 pnpm.cmd lint
+pnpm.cmd typecheck
+pnpm.cmd test:unit
+pnpm.cmd db:test:prepare
+pnpm.cmd test:integration
 pnpm.cmd test:guard
 pnpm.cmd db:status
 docker compose --env-file .env -f infra/local/compose.yaml exec -T postgres psql -U ark -d ark_dev -c "SELECT version();"
 ```
 
-The build includes TypeScript compilation. Lint currently uses the starter's Oxlint configuration. `test:guard` checks the local staged-file guard; it is not a platform business-logic test suite. Vitest and Playwright are installed, but application unit/integration/browser suites have not been implemented.
+TypeScript strictness is explicit across the workspace. Oxlint is the chosen linter for this slice. Unit tests check shared contracts; integration tests use isolated schemas in **ark_test**, require that exact local database name, and include an actual API process restart. They never bootstrap or clear `ark_dev`. `test:guard` checks the staged-file safety tool. Browser verification uses the [documented Playwright CLI walkthrough](notes/findings/browser-verification.md); it is not an automated browser regression suite.
 
-Stop the web server with Ctrl+C and the database with `pnpm.cmd db:stop`. The named database volume persists.
+Stop both development processes with Ctrl+C and the database with `pnpm.cmd db:stop`. The named database volume persists. These defaults support local development only; a network deployment needs a separate HTTPS, cookie, proxy, and operations review.
 
 ## Before each commit
 

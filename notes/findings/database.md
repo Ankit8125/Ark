@@ -1,20 +1,21 @@
 # Database findings
 
-Recorded 2026-09-25. [Findings index](README.md)
+Updated 2026-09-26. [Findings index](README.md)
 
-## F003 - Windows database port mapping is 5434 -> 5432
+## F003 - Host port and authenticated access
 
-Evidence: Compose and the running container bind `127.0.0.1:5434:5432`. PostgreSQL remains on 5432 inside its container. The original host port 5433 failed with an access-permission bind error; the root cause may involve Windows reservations or another process, but it was not established.
+Compose binds 127.0.0.1:5434 to container port 5432. The original host port 5433 failed with a Windows bind-permission error; the exact cause was not established. The old local connection URL was aligned to 5434 without changing its password.
 
-The ignored local `DATABASE_URL` still used 5433 after the Compose edit. It was corrected to 5434 without changing the password. Keep Compose, `.env.example`, the local environment, setup helper, and instructions aligned if the host port changes again.
+Bootstrap verified healthy PostgreSQL 17.11, internal SQL, and host TCP reachability. The identity increment additionally verified a host connection as restricted role `ark_app`. Internal socket success alone would not prove host authentication.
 
-Verified: healthy PostgreSQL 17.11, successful in-container SQL query, reachable host TCP port. Not verified by those checks: a future API connecting with `DATABASE_URL`. The in-container local socket can use different authentication from host TCP access.
+## F004 - Data, roles, and credentials have separate lifecycles
 
+The Docker volume `ark-local_postgres_data` persists database files. Ignored `.env` retains matching credentials. Changing a password variable does not change an initialized database role. Never remove the volume to repair a connection mismatch. Routine shutdown is `pnpm.cmd db:stop`.
 
-## F004 - Database data and local credentials have separate lifecycles
+The Compose `ark` user remains the local administrator. `MIGRATION_DATABASE_URL` serves explicit migrations/provisioning; the API's `DATABASE_URL` uses `ark_app`. It is non-superuser, cannot create databases/roles or bypass RLS, and receives explicit table privileges. It can read/insert audit events but cannot update/delete them or create tables. This does not replace API authorization or implement row-level security.
 
-PostgreSQL data resides in the Docker named volume `ark-local_postgres_data`. The `.env` file is ignored and local. `setup:env` creates it only when absent and does not print secrets.
+## F008 - Migrations and tests have explicit boundaries
 
-Changing an environment variable does not change the password of an already initialized PostgreSQL role. Preserve the matching `.env` and volume; do not delete/recreate the volume to fix a connection error. Use an explicit password-rotation procedure when necessary. Routine shutdown uses `db:stop`.
+`001_identity.sql` is applied to `ark_dev`. Add later migration files and register their versions instead of editing this one. The runner serializes migration writers, checks stored checksums, and rolls back on failure. Server startup never migrates.
 
-The current `POSTGRES_USER` is the local development bootstrap role. It is not yet a designed least-privilege application/migration role split. Implement that database access design before representing the API as hardened.
+Tests require local `ark_test` and generate unique `ark_test_<hex>` schemas. Cleanup validates database and schema names. Real development setup remains pending; browser accounts are disposable fixtures. Unexpectedly killed tests can leave their own schema behind; inspect and target only those schemas. There is no database-wide reset command.

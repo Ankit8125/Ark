@@ -1,31 +1,30 @@
 # Codebase and tooling findings
 
-Recorded 2026-09-25. [Findings index](README.md)
+Updated 2026-09-26. [Findings index](README.md)
 
-## F001 - The application is still a frontend starter
+## F001 - The starter has become the local identity foundation
 
-Evidence: `apps/web/src/App.tsx` is the generated counter/links page. `apps/web/src/main.tsx` mounts it in React StrictMode. The current UI does not call a backend or access PostgreSQL. There are no API, engine, runner, migration, or shared-contract packages yet.
+| Location               | Implemented responsibility                                                                    |
+| ---------------------- | --------------------------------------------------------------------------------------------- |
+| `apps/web`             | React Router setup/login guards, forms, team-aware shell, CSS modules and tokens              |
+| `apps/api`             | Fastify request boundary, identity service, credentials, loopback server                      |
+| `packages/contracts`   | Zod request/response schemas and inferred TypeScript types                                    |
+| `packages/db`          | PostgreSQL pool, transactions, checksum-verified SQL migrations                               |
+| `scripts/database.mjs` | Local migration/runtime-role/test-database provisioning                                       |
+| `tests/unit`           | Contract validation cases                                                                     |
+| `tests/integration`    | Real PostgreSQL identity, denial, rollback, concurrency, privilege, and process-restart tests |
+| `tests/helpers`        | Isolated test schemas and a disposable browser-test API                                       |
 
-Consequence: a successful frontend build is not proof that setup/login, permissions, tasks, or sessions work. V0.1 remains incomplete.
+Session execution, resource editing, runners, and models are absent. The UI says so. Login sessions (`auth_sessions`) are not future execution sessions.
 
+## F002 - The lockfile establishes resolved versions
 
-## F002 - Declared ranges and installed versions differ
+Node 24.21.0 and pnpm 10.34.5 were verified during bootstrap. `package.json` pins the package-manager version and requires Node 24. Manifest ranges express compatibility; `pnpm-lock.yaml` records exact resolutions. Use frozen-lockfile installation. The API uses Fastify 5.12.5's `LogController`, so its manifest requires at least that version.
 
-The manifest records permitted ranges; `pnpm-lock.yaml` records resolved dependency versions. Direct inspection of the installed packages on this date found:
+## F006 - Strictness and lint decisions are explicit
 
-| Dependency | Manifest declaration | Resolved locally |
-| --- | --- | --- |
-| React / React DOM | ^19.2.8 | 19.3.0 |
-| TypeScript | ~6.0.2 | 6.0.3 |
-| Vite | ^8.3.0 | 8.3.1 |
-| Oxlint | ^1.81.0 | 1.85.0 |
+TypeScript `strict` is enabled in web, API, shared packages, and tests. The API also enables unchecked-index and exact-optional-property checks. Root `typecheck` covers tests as well as packages; `build` emits packages in dependency order.
 
-Node 24.21.0 and pnpm 10.34.5 were verified by their executables. Root tooling declarations pin Playwright 1.63.0, Prettier 3.9.9, and Vitest 5.0.1. Keep the lockfile in Git and use frozen-lockfile installation for reproduction. Do not describe a version range as the exact installed version.
+Oxlint is intentionally retained rather than switching the working starter to ESLint during identity implementation. Root lint includes apps, packages, tests, and scripts. This is an explicit deviation from the earlier plan, not a claim that ESLint was configured. There is no type-aware ESLint suite. TypeScript and behavior tests provide separate checks.
 
-
-## F006 - Starter tooling differs from parts of the plan
-
-- The generated frontend uses Oxlint; the intended plan selected ESLint. Preserve the factual distinction and make an explicit decision in V0.1.
-- `tsconfig.app.json` and `tsconfig.node.json` do not explicitly set `strict`. Compiler configuration inspection did not report an explicit strict setting. Set and verify the intended strict behavior before claiming compliance; do not infer all type-safety guarantees from a successful build or the TypeScript major alone.
-- Root commands were absent immediately after scaffolding and were added during the recording pass. Application `test:unit`, `test:integration`, `test:e2e`, migration commands, and test fixtures do not yet exist.
-- The Windows development environment uses Docker Desktop/WSL2. Later per-session sandboxing must be implemented and tested on this environment; a database container alone does not provide agent isolation.
+`dev` uses concurrently to start API and web and stop its sibling when one exits. Shared packages build before startup; shared-source changes require a rebuild/restart. The deployment boundary is loopback development. Windows container isolation for future execution has not been implemented or proven.

@@ -1,0 +1,52 @@
+# Browser verification and design decisions
+
+Recorded 2026-09-26. [Findings index](README.md)
+
+## Design reference lock
+
+The existing project direction specifies a compact light developer console, grouped Run/Build/Operate navigation, restrained purple actions and selection, sans-serif text, and monospace identifiers. This increment uses 14px system typography, neutral surfaces and borders, CSS modules with tokens, Lucide icons, and a small code-native Ark favicon. Forms use native labels and controls; a native details element supplies the account menu. No complex component required Radix in this slice.
+
+Refero live reference search returned NO_SUBSCRIPTION. The supplied direction and the installed Refero skill's craft, typography, and color guidance informed the implementation; no unavailable reference is claimed as reviewed. Rejected patterns: marketing hero, invented metrics, fake execution records, unlabeled decorative controls, or functioning-looking buttons for future features.
+
+## Reproduce the disposable browser environment
+
+Run from the repository root after dependency installation:
+
+```powershell
+pnpm.cmd build:shared
+pnpm.cmd db:test:prepare
+pnpm.cmd test:browser:api
+```
+
+In a second PowerShell terminal:
+
+```powershell
+$env:ARK_API_TARGET = 'http://127.0.0.1:3002'
+pnpm.cmd --dir apps/web dev --port 5184
+```
+
+Open http://127.0.0.1:5184. The helper creates an empty unique schema in local ark_test; it refuses ark_dev. Use fictional names and an example.test email, and a test-only password. Never use real credentials in browser traces or CLI history. The API's test origins are exactly localhost/127.0.0.1:5184; choose coordinated allowlists if changing test ports.
+
+The helper attempts cleanup on SIGINT/SIGTERM. Abrupt process-tree termination on Windows may skip that handler. Inspect remaining generated schemas and remove only the schema from that fixture; never drop the database or development schema. This checkpoint's two browser fixture schemas were separately identified by migration time and fixture contents before cleanup.
+
+## Acceptance walkthrough performed
+
+Playwright CLI 0.1.21 with Chrome was used against the actual local API and PostgreSQL fixture:
+
+1. New installation opened the setup form.
+2. Submitting an empty form displayed field errors and focused the first invalid input.
+3. Valid setup created the organization/owner/team and opened Sessions.
+4. Reload preserved authentication and the saved organization/team context.
+5. Desktop and 390px mobile screenshots were visually inspected; the shell and login remained readable.
+6. Account-menu sign-out returned to login.
+7. Incorrect password produced the generic error and focused its alert.
+8. Browser offline simulation displayed a retryable connection error and retained entered fields.
+9. Restoring network access and retrying the same login opened the authenticated shell.
+
+Artifacts are local and ignored under output/playwright; transient snapshots/logs are ignored under .playwright-cli. This is a recorded interactive acceptance check, not an automated browser regression suite or a complete accessibility audit.
+
+## Issues resolved and check limits
+
+A missing favicon was replaced with the Ark mark. A browser left open across dependency optimization/configuration updates briefly mixed stale Vite bundles; a full reload loaded consistent modules and the flow was rerun successfully. Expected 401 responses and the intentional offline failure appear in browser console history; they are not successful-login runtime exceptions.
+
+Ports 5173 and 5174 were already occupied by older servers. Verification used 5184 and API 3002 without stopping those unrelated listeners. The normal root dev command was checked: its strict-port failure stopped its sibling process as designed. Stop the older development terminal on 5173 before normal startup. No network deployment, real organization account, or paid inference was performed.

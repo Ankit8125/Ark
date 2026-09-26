@@ -6,20 +6,40 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "dev": "pnpm --dir apps/web dev --host 127.0.0.1",
-    "build": "pnpm --dir apps/web build",
-    "lint": "pnpm --dir apps/web lint",
+    "dev": "pnpm build:shared && concurrently --kill-others --names api,web \"pnpm dev:api\" \"pnpm dev:web\"",
+    "build": "pnpm -r --sort build",
+    "lint": "oxlint apps packages tests scripts",
     "setup:env": "node scripts/setup-env.mjs",
     "db:up": "docker compose --env-file .env -f infra/local/compose.yaml up -d --wait",
     "db:stop": "docker compose --env-file .env -f infra/local/compose.yaml stop",
     "db:status": "docker compose --env-file .env -f infra/local/compose.yaml ps",
     "check:staged": "node scripts/check-staged.mjs",
     "test:guard": "node --test scripts/check-staged.test.mjs",
-    "hooks:install": "git config --local core.hooksPath .githooks"
+    "hooks:install": "git config --local core.hooksPath .githooks",
+    "dev:api": "pnpm --filter @ark/api dev",
+    "db:test:prepare": "node scripts/database.mjs test-prepare",
+    "dev:web": "pnpm --dir apps/web dev",
+    "test:unit": "pnpm build:shared && vitest run tests/unit",
+    "build:shared": "pnpm --filter @ark/contracts --filter @ark/db build",
+    "db:migrate": "pnpm build:shared && node scripts/database.mjs migrate",
+    "db:prepare": "pnpm build:shared && node scripts/database.mjs prepare",
+    "typecheck": "pnpm -r --sort typecheck && tsc -p tests/tsconfig.json",
+    "test:integration": "pnpm --filter @ark/api... build && node --env-file=.env node_modules/vitest/vitest.mjs run tests/integration",
+    "test:browser:api": "node --env-file=.env --import tsx tests/helpers/browser-server.ts"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
     "prettier": "3.9.9",
-    "vitest": "5.0.1"
+    "vitest": "5.0.1",
+    "concurrently": "^9.2.1",
+    "tsx": "^4.20.6",
+    "@types/node": "^24.13.3",
+    "typescript": "~6.0.2",
+    "oxlint": "^1.81.0",
+    "@types/pg": "^8.15.5",
+    "@ark/db": "workspace:*",
+    "@ark/api": "workspace:*",
+    "@ark/contracts": "workspace:*",
+    "pg": "^8.16.3"
   }
 }

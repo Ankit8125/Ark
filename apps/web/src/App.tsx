@@ -1,122 +1,223 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import type { MeResponse } from "@ark/contracts";
+import { Box, LoaderCircle, RefreshCw, WifiOff } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { api, ApiRequestError, errorMessage } from "./api";
+import { AuthPage } from "./AuthPage";
+import { Shell } from "./Shell";
+import styles from "./App.module.css";
+
+type State =
+  | { kind: "loading" }
+  | { kind: "setup" }
+  | { kind: "anonymous"; notice?: string }
+  | { kind: "authenticated"; me: MeResponse }
+  | { kind: "offline"; message: string };
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [state, setState] = useState<State>({ kind: "loading" });
+  const [attempt, setAttempt] = useState(0);
+  const sessionVersion = useRef(0);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    const version = ++sessionVersion.current;
+    async function load() {
+      setState({ kind: "loading" });
+      try {
+        const required = await api.bootstrapStatus(controller.signal);
+        if (controller.signal.aborted || version !== sessionVersion.current)
+          return;
+        if (required) setState({ kind: "setup" });
+        else {
+          const me = await api.me(controller.signal);
+          if (!controller.signal.aborted && version === sessionVersion.current)
+            setState({ kind: "authenticated", me });
+        }
+      } catch (error) {
+        if (controller.signal.aborted || version !== sessionVersion.current)
+          return;
+        setState(
+          error instanceof ApiRequestError && error.status === 401
+            ? { kind: "anonymous" }
+            : { kind: "offline", message: errorMessage(error) },
+        );
+      }
+    }
+    void load();
+    return () => controller.abort();
+  }, [attempt]);
+
+  const expired = useCallback(() => {
+    sessionVersion.current += 1;
+    setState({
+      kind: "anonymous",
+      notice: "Your session has ended. Sign in again to continue.",
+    });
+  }, []);
+  const authenticated = state.kind === "authenticated";
+  useEffect(() => {
+    if (!authenticated) return;
+    const controller = new AbortController();
+    let refreshing = false;
+    async function recheck() {
+      if (document.visibilityState !== "visible" || refreshing) return;
+      refreshing = true;
+      const version = sessionVersion.current;
+      try {
+        const me = await api.me(controller.signal);
+        if (!controller.signal.aborted && version === sessionVersion.current)
+          setState((current) =>
+            current.kind === "authenticated"
+              ? { kind: "authenticated", me }
+              : current,
+          );
+      } catch (error) {
+        if (
+          !controller.signal.aborted &&
+          version === sessionVersion.current &&
+          error instanceof ApiRequestError &&
+          error.status === 401
+        )
+          expired();
+      } finally {
+        refreshing = false;
+      }
+    }
+    window.addEventListener("focus", recheck);
+    document.addEventListener("visibilitychange", recheck);
+    return () => {
+      controller.abort();
+      window.removeEventListener("focus", recheck);
+      document.removeEventListener("visibilitychange", recheck);
+    };
+  }, [authenticated, expired]);
+
+  if (state.kind === "loading" || state.kind === "offline") {
+    return (
+      <main className={styles.connectionPage}>
+        <div className={styles.brand}>
+          <Box size={23} aria-hidden="true" />
+          <span>ark</span>
+        </div>
+        {state.kind === "loading" ? (
+          <div role="status" className={styles.connectionStatus}>
+            <LoaderCircle
+              size={22}
+              className={styles.spinner}
+              aria-hidden="true"
+            />
+            <h1>Opening your workspace…</h1>
+          </div>
+        ) : (
+          <div className={styles.connectionStatus}>
+            <WifiOff size={28} aria-hidden="true" />
+            <h1>Can’t connect to Ark</h1>
+            <p role="alert">{state.message}</p>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => setAttempt((value) => value + 1)}
+            >
+              <RefreshCw size={16} aria-hidden="true" />
+              Retry connection
+            </button>
+          </div>
+        )}
+      </main>
+    );
+  }
+
+  const accept = (me: MeResponse) => {
+    sessionVersion.current += 1;
+    setState({ kind: "authenticated", me });
+  };
+  const logout = () => {
+    sessionVersion.current += 1;
+    setState({ kind: "anonymous" });
+  };
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/setup"
+          element={
+            state.kind === "setup" ? (
+              <AuthPage
+                key="setup"
+                mode="setup"
+                onSuccess={accept}
+                onSetupComplete={() =>
+                  setState({
+                    kind: "anonymous",
+                    notice:
+                      "This organization has already been set up. Sign in to continue.",
+                  })
+                }
+              />
+            ) : (
+              <Navigate
+                to={state.kind === "authenticated" ? "/sessions" : "/login"}
+                replace
+              />
+            )
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            state.kind === "anonymous" ? (
+              <AuthPage
+                key="login"
+                mode="login"
+                notice={state.notice}
+                onSuccess={accept}
+                onSetupComplete={() => undefined}
+              />
+            ) : (
+              <Navigate
+                to={state.kind === "setup" ? "/setup" : "/sessions"}
+                replace
+              />
+            )
+          }
+        />
+        <Route
+          path="/sessions"
+          element={
+            state.kind === "authenticated" ? (
+              <Shell
+                me={state.me}
+                onExpired={expired}
+                onLogout={logout}
+                onRefresh={() => setAttempt((value) => value + 1)}
+              />
+            ) : (
+              <Navigate
+                to={state.kind === "setup" ? "/setup" : "/login"}
+                replace
+              />
+            )
+          }
+        />
+        <Route
+          path="*"
+          element={
+            <Navigate
+              to={
+                state.kind === "setup"
+                  ? "/setup"
+                  : state.kind === "authenticated"
+                    ? "/sessions"
+                    : "/login"
+              }
+              replace
+            />
+          }
+        />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;

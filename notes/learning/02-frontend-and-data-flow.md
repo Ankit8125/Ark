@@ -1,83 +1,40 @@
 # Frontend and application data flow
 
-Recorded 2026-09-25. [Learning index](README.md) | [Current progress](../progress/README.md)
+Updated 2026-09-26. [Learning index](README.md) | [Current progress](../progress/README.md)
 
-## Follow the path from your command to the browser
+## From your terminal to a working page
 
-When you run this from the repository root:
-
-```powershell
-pnpm.cmd --dir apps/web dev
-```
-
-1. PowerShell starts pnpm's Windows command launcher.
-2. `--dir apps/web` tells pnpm which package to work in.
-3. pnpm reads that package's `dev` script, which is `vite`.
-4. Node.js runs Vite on your computer.
-5. Vite serves the web page and development assets to your browser.
-6. The browser executes the React application and draws the interface.
-
-The terminal prints the URL to open, normally `http://localhost:5173`. Keep that terminal running while you use the development server. Press `Ctrl+C` to stop it. Saving a frontend file triggers Vite's development update process.
-
-The entry path is:
+Run `pnpm.cmd dev` from the repository root. It builds the shared packages, then starts the API and Vite frontend together. Open **http://127.0.0.1:5173**. Keep the terminal running; Ctrl+C stops both processes.
 
 ```text
 apps/web/index.html
-  -> apps/web/src/main.tsx
-  -> apps/web/src/App.tsx
-  -> the page in your browser
+  -> src/main.tsx mounts React
+  -> src/App.tsx checks setup status and the current login
+  -> src/AuthPage.tsx or src/Shell.tsx displays the result
 ```
 
-[`main.tsx`](../../apps/web/src/main.tsx) connects React to the page's root element. [`App.tsx`](../../apps/web/src/App.tsx) defines the current page. Its counter uses React state held in browser memory; reloading the page resets it. No PostgreSQL write happens when you click it.
+On a new installation, the API reports that setup is required. The browser shows a form for owner, organization, and first team. After setup, the API validates the login cookie and returns allowed user and team details. A missing or expired cookie leads to login.
 
-
-## Current setup and future data flow
-
-What exists today:
+## One actual request
 
 ```text
-PowerShell -> pnpm -> Node.js -> Vite -> browser -> React starter
-
-Docker Desktop -> PostgreSQL container -> persistent named volume
-
-The React starter and PostgreSQL have no application connection yet.
+Create organization button
+  -> browser validates packages/contracts schema
+  -> POST /api/bootstrap through the Vite proxy
+  -> Fastify independently validates the request
+  -> database transaction creates related identity records
+  -> API sets a protected cookie and returns current identity
+  -> React opens /sessions and checks the selected team
 ```
 
-The intended flow after the API is implemented:
+The form does not write directly to PostgreSQL. Database URLs stay in the server's environment. Passwords are hashed before storage. Browser JavaScript cannot read the HttpOnly cookie. Local storage holds only a selected team ID, never an authentication token.
 
-```text
-Browser / React UI
-       |
-       | HTTP request
-       v
-Fastify API running on Windows
-       |
-       | validate input, authenticate, check permissions
-       | database connection to 127.0.0.1:5434
-       v
-Docker port forwarding
-       |
-       | container port 5432
-       v
-PostgreSQL -> tables -> persistent named volume
+The counter page from the scaffold is gone. Organization, identity, and membership records survive a reload and API process restart because PostgreSQL stores them. Unsaved form fields remain temporary.
 
-Result returns through the API to the browser.
-```
+## Development and production output
 
-For example, a future "Create team" form could send a name to the API. The API would check the signed-in user's permission, validate the name, write a row and return the saved record. The UI would display that record. This is a conceptual example of the planned architecture; that form, route, permission check and table have not been implemented.
+Vite updates the frontend after source edits. The API development process restarts for its own source edits. After changing shared package source, rerun `pnpm.cmd build:shared` and restart development so both sides use rebuilt packages.
 
-Database credentials belong to the backend. The browser communicates with the API rather than connecting directly to PostgreSQL.
+`pnpm.cmd build` generates compiled API/shared files and frontend assets. It does not deploy a site. `pnpm.cmd --dir apps/web preview` can inspect static output but has no API proxy. Use `pnpm.cmd dev` for the working authenticated local application.
 
-
-## The next implementation milestone
-
-This setup is a starting environment. The public [architecture](../../docs/architecture.md) explains the intended components, and the [roadmap](../../docs/roadmap.md) describes their implementation order. The V0.1 foundation still requires:
-
-1. Shared configuration and schemas for validated data contracts.
-2. Database migration tooling and tables for organizations, users, memberships, sessions, the bootstrap marker and initial audit records.
-3. A Fastify API with health/readiness endpoints and database access.
-4. One-time owner setup, password hashing, protected sessions and permission checks.
-5. Setup/login screens, the application shell and current-user/team state backed by that API.
-6. Checks that setup survives a restart, cannot run twice, rejects unauthenticated access, isolates teams and prevents orphaning an organization.
-
-The runner, workflow engine, real AI adapter and GitHub publication actions belong to later increments. The first milestone is complete only when its actual behavior and acceptance checks exist and pass.
+Read [identity and sessions](05-identity-and-sessions.md) for commands and permissions. The next increment adds team-owned workspace editing; execution and AI calls remain later work.
