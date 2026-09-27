@@ -357,7 +357,7 @@ describe("V0.1 identity with real PostgreSQL", () => {
           "SELECT count(*)::int AS count FROM schema_migrations",
         )
       ).rows[0].count,
-    ).toBe(1);
+    ).toBe(2);
     await db.pool.query("UPDATE schema_migrations SET checksum='tampered'");
     await expect(migrate(db.pool)).rejects.toThrow("checksum mismatch");
   });
@@ -374,6 +374,12 @@ describe("V0.1 identity with real PostgreSQL", () => {
       );
       await db.admin.query(
         `REVOKE UPDATE, DELETE ON "${db.schema}".audit_events FROM "${role}"`,
+      );
+      await db.admin.query(
+        `REVOKE UPDATE, DELETE ON "${db.schema}".resource_versions FROM "${role}"`,
+      );
+      await db.admin.query(
+        `REVOKE DELETE ON "${db.schema}".resources FROM "${role}"`,
       );
       const url = new URL(db.connection);
       url.searchParams.set(

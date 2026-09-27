@@ -294,6 +294,7 @@
   color: var(--text-subtle);
 }
 .activeNav,
+.navLink,
 .futureNav {
   display: flex;
   gap: 10px;
@@ -303,6 +304,13 @@
   font-size: 13px;
   border-radius: 5px;
   text-decoration: none;
+}
+.navLink {
+  color: var(--text-muted);
+}
+.navLink:hover {
+  color: var(--text);
+  background: var(--surface-muted);
 }
 .activeNav {
   color: var(--accent);

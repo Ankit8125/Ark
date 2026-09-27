@@ -50,3 +50,7 @@ Artifacts are local and ignored under output/playwright; transient snapshots/log
 A missing favicon was replaced with the Ark mark. A browser left open across dependency optimization/configuration updates briefly mixed stale Vite bundles; a full reload loaded consistent modules and the flow was rerun successfully. Expected 401 responses and the intentional offline failure appear in browser console history; they are not successful-login runtime exceptions.
 
 Ports 5173 and 5174 were already occupied by older servers. Verification used 5184 and API 3002 without stopping those unrelated listeners. The normal root dev command was checked: its strict-port failure stopped its sibling process as designed. Stop the older development terminal on 5173 before normal startup. No network deployment, real organization account, or paid inference was performed.
+
+## Workspace increment, 2026-09-27
+
+The same disposable-database approach verified workspace creation, all-field reload fidelity, two-tab stale conflicts, offline-save retry, and canceled dirty navigation. Desktop and 390px mobile forms were inspected. See the [workspace implementation record](../progress/2026-09-27-01-workspaces.md) for the actual walkthrough, automated coverage, and limits. The existing visual direction was retained; Refero remained unavailable with NO_SUBSCRIPTION, and no subscription or design dependency was added.

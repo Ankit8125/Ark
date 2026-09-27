@@ -15,7 +15,7 @@ This is intended work. The [progress notebook](../notes/progress/README.md) reco
 | V0.7      | Plan/publication approvals and bounded repair                                      | Stale evidence/approval rejected, exact commit binding, separate process status and quality verdict                                              |
 | V0.8      | One verified draft PR                                                              | Actual checks/review/approval, controlled push, response-loss reconciliation, verified remote head/base/draft                                    |
 
-Current position: the local V0.1 identity foundation is implemented and verified. See the [implementation checkpoint](../notes/progress/2026-09-26-01-identity-foundation.md) for evidence and scope limits. The Sessions page is a shell; it cannot start an execution yet.
+Current position: local V0.1 identity and the first V0.2 workspace catalog slice are implemented. See the [workspace checkpoint](../notes/progress/2026-09-27-01-workspaces.md) for verification and scope limits. V0.2 remains incomplete until agents, ordered flows, and forbidden-reference checks are implemented. The Sessions page is a shell; it cannot start an execution yet.
 
 ## V1 - First team-usable release
 
@@ -35,6 +35,6 @@ Deferred scope remains part of the product direction. It does not justify instal
 
 ## Next work package
 
-Begin V0.2 with one bounded team-owned workspace increment: shared schema, SQL migration, authorized create/read/update endpoints, stale-edit conflict checks, and a real save/reload form. Then add agents and ordered flows with immutable versions. Existing identity and denial tests remain regression checks.
+Continue V0.2 with a bounded team-owned agent catalog increment: shared schema, new SQL migration, authorized endpoints, immutable versions, and a save/reload form. Then add ordered flows with authorized references to workspace/agent versions. Existing identity, workspace, and denial tests remain regression checks. Do not add model calls or runner execution to catalog editing.
 
 TypeScript strictness is explicit. Oxlint is retained intentionally for the current workspace; the [tooling findings](../notes/findings/codebase-and-tooling.md) record the deviation from the earlier ESLint plan. Real model calls and runner execution remain later work.

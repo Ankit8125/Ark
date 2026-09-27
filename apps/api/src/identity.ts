@@ -45,6 +45,12 @@ export interface SignedInSession {
   me: MeResponse;
 }
 
+export interface TeamAccess {
+  userId: string;
+  organizationId: string;
+  team: TeamRow;
+}
+
 const identityColumns = `
   u.id AS user_id, u.display_name, u.email,
   o.id AS organization_id, o.name AS organization_name,
@@ -238,17 +244,20 @@ export class IdentityService {
 
   private async authenticate(
     token: string | undefined,
+    client: Pool | PoolClient = this.pool,
+    lock = false,
   ): Promise<SessionIdentityRow> {
     const tokenHash = sessionTokenHash(token);
     if (!tokenHash) throw unauthenticated();
-    const result = await this.pool.query<SessionIdentityRow>(
+    const result = await client.query<SessionIdentityRow>(
       `SELECT s.id AS session_id, ${identityColumns}
        FROM auth_sessions s
        JOIN users u ON u.id = s.user_id
        JOIN organization_memberships om ON om.user_id = s.user_id AND om.organization_id = s.organization_id
        JOIN organizations o ON o.id = s.organization_id
        WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > now()
-         AND u.disabled_at IS NULL AND om.revoked_at IS NULL`,
+         AND u.disabled_at IS NULL AND om.revoked_at IS NULL
+       ${lock ? "FOR SHARE OF s, u, om" : ""}`,
       [tokenHash],
     );
     const identity = result.rows[0];
@@ -292,12 +301,26 @@ export class IdentityService {
     token: string | undefined,
     teamId: string,
   ): Promise<{ team: TeamRow }> {
-    const identity = await this.authenticate(token);
-    const result = await this.pool.query<TeamRow>(
+    const access = await this.authorizeTeam(token, teamId);
+    return { team: access.team };
+  }
+
+  async authorizeTeam(
+    token: string | undefined,
+    teamId: string,
+    mutation?: { client: PoolClient },
+  ): Promise<TeamAccess> {
+    const client = mutation?.client ?? this.pool;
+    // Mutation callers hold these locks until their transaction commits. A
+    // logout, disabled user, or membership revocation cannot slip between this
+    // authorization decision and the resource write.
+    const identity = await this.authenticate(token, client, !!mutation);
+    const result = await client.query<TeamRow>(
       `SELECT t.id, t.name, tm.role
        FROM teams t
        JOIN team_memberships tm ON tm.team_id = t.id AND tm.organization_id = t.organization_id
-       WHERE t.id = $1 AND tm.user_id = $2 AND t.organization_id = $3 AND tm.revoked_at IS NULL`,
+       WHERE t.id = $1 AND tm.user_id = $2 AND t.organization_id = $3 AND tm.revoked_at IS NULL
+       ${mutation ? "FOR SHARE OF t, tm" : ""}`,
       [teamId, identity.user_id, identity.organization_id],
     );
     const team = result.rows[0];
@@ -309,7 +332,17 @@ export class IdentityService {
         "NOT_FOUND",
         "The requested team was not found.",
       );
-    return { team: TeamSchema.parse(team) };
+    if (mutation && team.role !== "admin" && team.role !== "developer")
+      throw new ApiFailure(
+        403,
+        "FORBIDDEN",
+        "Your team role does not allow workspace changes.",
+      );
+    return {
+      userId: identity.user_id,
+      organizationId: identity.organization_id,
+      team: TeamSchema.parse(team),
+    };
   }
 
   async logout(token: string | undefined): Promise<void> {

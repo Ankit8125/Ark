@@ -21,9 +21,18 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { NavLink } from "react-router-dom";
+import {
+  Navigate,
+  NavLink,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { api, ApiRequestError, errorMessage } from "./api";
 import styles from "./App.module.css";
+import { WorkspaceRoutes } from "./features/workspaces/WorkspaceRoutes";
+import { useDraftNavigation } from "./features/workspaces/useDraftNavigation";
 
 type Props = {
   me: MeResponse;
@@ -33,7 +42,7 @@ type Props = {
 };
 type TeamState =
   | { kind: "loading" }
-  | { kind: "ready"; context: string; team: Team }
+  | { kind: "ready"; context: string; team: Team; refreshError?: string }
   | { kind: "error"; context: string; message: string };
 
 function rememberedTeam(me: MeResponse) {
@@ -48,6 +57,11 @@ function rememberedTeam(me: MeResponse) {
 }
 
 export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const workspacesPage = location.pathname.startsWith("/workspaces");
+  const { onDraftStatus, confirmLeave, prompt, draftStatus } =
+    useDraftNavigation();
   const [choice, setChoice] = useState(() => rememberedTeam(me));
   const selected = me.teams.find((team) => team.id === choice) ?? me.teams[0];
   const [teamState, setTeamState] = useState<TeamState>({ kind: "loading" });
@@ -90,12 +104,23 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
         if (controller.signal.aborted) return;
         if (error instanceof ApiRequestError && error.status === 401)
           onExpired();
-        else
-          setTeamState({
-            kind: "error",
-            context: teamContext,
-            message: errorMessage(error),
+        else {
+          const message = errorMessage(error);
+          const accessDenied =
+            error instanceof ApiRequestError &&
+            (error.status === 403 || error.status === 404);
+          setTeamState((current) => {
+            // Keep an already-open same-team draft through transient refresh
+            // failures. It remains read-only until a fresh check succeeds.
+            if (
+              !accessDenied &&
+              current.kind === "ready" &&
+              current.team.id === selectedId
+            )
+              return { ...current, refreshError: message };
+            return { kind: "error", context: teamContext, message };
           });
+        }
       });
     return () => controller.abort();
   }, [selectedId, teamContext, me.user.id, teamAttempt, onExpired]);
@@ -128,7 +153,7 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
   }
 
   async function signOut() {
-    if (signingOut) return;
+    if (signingOut || !confirmLeave()) return;
     setSigningOut(true);
     setSignOutError("");
     try {
@@ -152,9 +177,22 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
     );
   }
 
-  const team =
-    teamState.kind === "ready" && teamState.context === teamContext
-      ? teamState.team
+  const contextVerified =
+    teamState.kind === "ready" &&
+    teamState.context === teamContext &&
+    !teamState.refreshError;
+  const roleRank = { viewer: 0, reviewer: 1, developer: 2, admin: 3 };
+  const team: Team | undefined =
+    teamState.kind === "ready" && teamState.team.id === selectedId && selected
+      ? {
+          ...teamState.team,
+          // Neither endpoint may upgrade the more restrictive membership view.
+          role: !contextVerified
+            ? "viewer"
+            : roleRank[selected.role] < roleRank[teamState.team.role]
+              ? selected.role
+              : teamState.team.role,
+        }
       : undefined;
   return (
     <div className={styles.shell}>
@@ -199,10 +237,13 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
             id="active-team"
             value={selectedId ?? ""}
             onChange={(event) => {
+              if (!confirmLeave()) return;
+              onDraftStatus({ dirty: false, busy: false });
               setChoice(event.target.value);
               setTeamState({ kind: "loading" });
+              if (workspacesPage) void navigate("/workspaces");
             }}
-            disabled={!me.teams.length}
+            disabled={!me.teams.length || draftStatus.busy}
           >
             {!me.teams.length && <option value="">No team access</option>}
             {me.teams.map((item) => (
@@ -217,7 +258,9 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
             <h2>Run</h2>
             <NavLink
               to="/sessions"
-              className={styles.activeNav}
+              className={({ isActive }) =>
+                isActive ? styles.activeNav : styles.navLink
+              }
               onClick={() => {
                 if (navigationOpen) closeNavigation();
               }}
@@ -228,10 +271,19 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
             {future("Schedules", CalendarClock)}
           </div>
           <div className={styles.navGroup}>
-            <h2>
-              Build <span>Coming later</span>
-            </h2>
-            {future("Workspaces", FolderGit2)}
+            <h2>Build</h2>
+            <NavLink
+              to="/workspaces"
+              className={({ isActive }) =>
+                isActive ? styles.activeNav : styles.navLink
+              }
+              onClick={() => {
+                if (navigationOpen) closeNavigation();
+              }}
+            >
+              <FolderGit2 size={17} aria-hidden="true" />
+              <span>Workspaces</span>
+            </NavLink>
             {future("Agents", Bot)}
             {future("Flows", GitBranch)}
             {future("Tools & MCP", Network)}
@@ -279,7 +331,7 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
             </button>
             <span>{selected?.name ?? me.organization.name}</span>
             <ChevronRight size={14} aria-hidden="true" />
-            <strong>Sessions</strong>
+            <strong>{workspacesPage ? "Workspaces" : "Sessions"}</strong>
           </div>
           <details
             className={styles.userMenu}
@@ -309,7 +361,7 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
                 type="button"
                 className={styles.signOut}
                 onClick={() => void signOut()}
-                disabled={signingOut}
+                disabled={signingOut || draftStatus.busy}
               >
                 <LogOut size={16} aria-hidden="true" />
                 {signingOut ? "Signing out…" : "Sign out"}
@@ -318,17 +370,46 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
           </details>
         </header>
         <main id="main-content" className={styles.mainContent} tabIndex={-1}>
-          <div className={styles.pageHeading}>
-            <div>
-              <div className={styles.eyebrow}>Run</div>
-              <h1>Sessions</h1>
-              <p>A shared place to follow work, evidence, and decisions.</p>
+          {prompt}
+          {team && !contextVerified && teamState.kind === "ready" && (
+            <section
+              className={styles.notice}
+              role="status"
+              aria-label="Team access check"
+            >
+              <div>
+                <p>
+                  {teamState.refreshError
+                    ? `${teamState.refreshError} Your open workspace and draft have been kept. Saving is paused until team access is checked.`
+                    : "Checking updated team access. Your open workspace and draft have been kept; saving is temporarily paused."}
+                </p>
+                {teamState.refreshError && (
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => {
+                      setTeamAttempt((value) => value + 1);
+                    }}
+                  >
+                    Retry team access
+                  </button>
+                )}
+              </div>
+            </section>
+          )}
+          {!workspacesPage && (
+            <div className={styles.pageHeading}>
+              <div>
+                <div className={styles.eyebrow}>Run</div>
+                <h1>Sessions</h1>
+                <p>A shared place to follow work, evidence, and decisions.</p>
+              </div>
+              <span className={styles.scopeBadge}>
+                <Users size={14} aria-hidden="true" />
+                Team workspace
+              </span>
             </div>
-            <span className={styles.scopeBadge}>
-              <Users size={14} aria-hidden="true" />
-              Team workspace
-            </span>
-          </div>
+          )}
           {!selected ? (
             <section className={styles.statusPanel}>
               <Users size={26} aria-hidden="true" />
@@ -382,62 +463,89 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
               <p>Checking team access…</p>
             </section>
           ) : (
-            <div className={styles.sessionsLayout}>
-              <section
-                className={styles.sessionPanel}
-                aria-labelledby="session-heading"
-              >
-                <div className={styles.panelHeading}>
-                  <h2 id="session-heading">Team sessions</h2>
-                  <span>{team.name}</span>
-                </div>
-                <div className={styles.emptyState}>
-                  <div className={styles.emptyIcon}>
-                    <GitBranch size={29} strokeWidth={1.5} aria-hidden="true" />
+            <Routes>
+              <Route
+                path="/workspaces/*"
+                element={
+                  <WorkspaceRoutes
+                    team={team}
+                    onExpired={onExpired}
+                    onDraftStatus={onDraftStatus}
+                  />
+                }
+              />
+              <Route
+                path="/sessions"
+                element={
+                  <div className={styles.sessionsLayout}>
+                    <section
+                      className={styles.sessionPanel}
+                      aria-labelledby="session-heading"
+                    >
+                      <div className={styles.panelHeading}>
+                        <h2 id="session-heading">Team sessions</h2>
+                        <span>{team.name}</span>
+                      </div>
+                      <div className={styles.emptyState}>
+                        <div className={styles.emptyIcon}>
+                          <GitBranch
+                            size={29}
+                            strokeWidth={1.5}
+                            aria-hidden="true"
+                          />
+                        </div>
+                        <h2>Your workspace is ready</h2>
+                        <p>
+                          Sessions will appear here when execution is available.
+                          Your organization, account, and team are saved.
+                        </p>
+                        <span className={styles.quietBadge}>
+                          Session execution is coming later
+                        </span>
+                      </div>
+                    </section>
+                    <aside
+                      className={styles.contextPanel}
+                      aria-labelledby="context-heading"
+                    >
+                      <h2 id="context-heading">Current context</h2>
+                      <dl>
+                        <div>
+                          <dt>Organization</dt>
+                          <dd>{me.organization.name}</dd>
+                        </div>
+                        <div>
+                          <dt>Team</dt>
+                          <dd>{team.name}</dd>
+                        </div>
+                        <div>
+                          <dt>Organization role</dt>
+                          <dd className={styles.role}>
+                            {me.organization.role}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Team role</dt>
+                          <dd className={styles.role}>{team.role}</dd>
+                        </div>
+                      </dl>
+                      <div className={styles.contextNote}>
+                        <ShieldCheck size={17} aria-hidden="true" />
+                        <p>
+                          Access is checked against your current team
+                          membership.
+                        </p>
+                      </div>
+                      <div className={styles.teamId}>
+                        <span>Team ID</span>
+                        <code>{team.id}</code>
+                      </div>
+                    </aside>
                   </div>
-                  <h2>Your workspace is ready</h2>
-                  <p>
-                    Sessions will appear here when execution is available. Your
-                    organization, account, and team are saved.
-                  </p>
-                  <span className={styles.quietBadge}>
-                    Session execution is coming later
-                  </span>
-                </div>
-              </section>
-              <aside
-                className={styles.contextPanel}
-                aria-labelledby="context-heading"
-              >
-                <h2 id="context-heading">Current context</h2>
-                <dl>
-                  <div>
-                    <dt>Organization</dt>
-                    <dd>{me.organization.name}</dd>
-                  </div>
-                  <div>
-                    <dt>Team</dt>
-                    <dd>{team.name}</dd>
-                  </div>
-                  <div>
-                    <dt>Organization role</dt>
-                    <dd className={styles.role}>{me.organization.role}</dd>
-                  </div>
-                  <div>
-                    <dt>Team role</dt>
-                    <dd className={styles.role}>{team.role}</dd>
-                  </div>
-                </dl>
-                <div className={styles.contextNote}>
-                  <ShieldCheck size={17} aria-hidden="true" />
-                  <p>Access is checked against your current team membership.</p>
-                </div>
-                <div className={styles.teamId}>
-                  <span>Team ID</span>
-                  <code>{team.id}</code>
-                </div>
-              </aside>
-            </div>
+                }
+              />
+              <Route path="*" element={<Navigate to="/sessions" replace />} />
+            </Routes>
           )}
         </main>
       </div>

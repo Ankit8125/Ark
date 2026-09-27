@@ -54,7 +54,7 @@ async function request(path: string, options: RequestInit = {}) {
   return response;
 }
 
-async function json<T>(
+export async function requestJson<T>(
   path: string,
   schema: { parse: (value: unknown) => T },
   options?: RequestInit,
@@ -89,15 +89,16 @@ export const api = {
     }
     return value.required;
   },
-  me: (signal?: AbortSignal) => json("/api/me", MeResponseSchema, { signal }),
+  me: (signal?: AbortSignal) =>
+    requestJson("/api/me", MeResponseSchema, { signal }),
   authenticate: (mode: "setup" | "login", body: unknown) =>
-    json(
+    requestJson(
       mode === "setup" ? "/api/bootstrap" : "/api/auth/login",
       MeResponseSchema,
       { method: "POST", body: JSON.stringify(body) },
     ),
   team: (id: string, signal?: AbortSignal) =>
-    json(
+    requestJson(
       `/api/teams/${encodeURIComponent(id)}`,
       {
         parse(value: unknown) {

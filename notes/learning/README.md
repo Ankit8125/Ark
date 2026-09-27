@@ -8,5 +8,6 @@ Read these in order or open the topic you need:
 4. [Git and safe synchronization](04-git-and-safe-sync.md): staging, commits, pushing, and safe history.
 5. [Identity and sessions](05-identity-and-sessions.md): working setup/login, runtime roles, tests, and limits.
 6. [Project architecture](06-project-architecture.md): folder tree, request flow, recovery, and growth decisions.
+7. [Workspaces](07-workspaces.md): create/edit configuration, saved versions, conflicts, and updated startup commands.
 
 Use [current progress](../progress/README.md) for verification and [findings](../findings/README.md) for durable decisions. Give future topics their own files and keep existing explanations aligned with implemented behavior.

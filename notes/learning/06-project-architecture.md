@@ -1,8 +1,8 @@
 # How the project is organized
 
-Updated 2026-09-26. [Learning index](README.md)
+Updated 2026-09-27. [Learning index](README.md)
 
-Ark is a TypeScript modular monolith: one application with explicit boundaries, rather than a separate deployed service for every responsibility. This is the recommended structure for the current V0.1 checkpoint. The tree shows the relevant implemented files, with repeated configuration and assets omitted.
+Ark is a TypeScript modular monolith: one application with explicit boundaries, rather than a separate deployed service for every responsibility. This is the recommended structure for V0.1 identity and the first V0.2 workspace slice. The tree shows relevant implemented files, with repeated configuration and assets omitted.
 
 ```text
 ark/
@@ -12,6 +12,15 @@ ark/
 |   |   |-- App.tsx                  # Routes and session lifecycle
 |   |   |-- AuthPage.tsx             # Setup/login form
 |   |   |-- Shell.tsx                # Team-aware application layout
+|   |   |-- features/workspaces/
+|   |   |   |-- WorkspaceRoutes.tsx # Catalog route composition
+|   |   |   |-- WorkspaceList.tsx   # Paginated team catalog
+|   |   |   |-- WorkspaceEditor.tsx # Complete definition form and save recovery
+|   |   |   |-- useDraftNavigation.tsx # Dirty-form route protection
+|   |   |   |-- permissions.ts     # UI role capability projection
+|   |   |   |-- api.ts             # Workspace HTTP adapter
+|   |   |   |-- WorkspaceEditor.test.tsx # Editor and shell DOM regressions
+|   |   |   `-- workspaces.module.css
 |   |   |-- api.ts                   # HTTP calls and response validation
 |   |   |-- ErrorBoundary.tsx        # Recovery from rendering failures
 |   |   |-- error-reporting.ts       # Sanitized React logging hooks
@@ -22,14 +31,20 @@ ark/
 |       |-- server.ts               # Process configuration and startup
 |       |-- app.ts                  # HTTP routes and request guards
 |       |-- identity.ts             # Identity use cases and authorization
+|       |-- workspace-routes.ts     # Catalog HTTP request/response adaptation
+|       |-- workspaces.ts           # Catalog use cases, transactions, SQL
 |       |-- credentials.ts          # Password and session-token operations
 |       |-- errors.ts               # Validation and safe API failures
 |       `-- index.ts                # Public factory export
 |-- packages/
-|   |-- contracts/src/index.ts      # Shared Zod schemas and inferred types
+|   |-- contracts/src/
+|   |   |-- index.ts                # Identity schemas and public exports
+|   |   `-- workspaces.ts           # Workspace schemas and inferred types
 |   `-- db/
 |       |-- src/index.ts            # Pool, transactions, migration runner
-|       `-- migrations/001_identity.sql
+|       `-- migrations/
+|           |-- 001_identity.sql
+|           `-- 002_workspaces.sql
 |-- scripts/
 |   |-- lib/local-database-url.mjs   # Local maintenance/test URL validation
 |   |-- lib/local-database-url.d.mts # Types for the JavaScript helper
@@ -64,7 +79,9 @@ For example, a URL that names loopback but adds a remote `host` query parameter 
 
 ## How this grows
 
-When V0.2 adds independent workspace behavior, introduce a focused `features/workspaces/` folder in the web app and a `workspaces/` module in the API. Move identity files together when that makes navigation easier. Split contracts by domain and keep public exports. Add new numbered SQL migrations; never edit an applied migration.
+V0.2 now has a focused `features/workspaces/` folder in the web app, a workspace service and route module in the API, and a domain-specific contracts file. The API's two catalog files remain flat while the module is small; introduce a folder when additional responsibilities justify it. Move identity files together when that makes navigation easier. Keep public contract exports and add new numbered SQL migrations; never edit applied migrations.
+
+Workspace saves validate the full definition, reauthorize the team in a transaction, lock/check its revision, and commit a new snapshot plus audit event. React Router's data router supplies dirty-form navigation blocking without replacing Vite or React. The [workspace guide](07-workspaces.md) explains this flow and its recovery behavior.
 
 Extract a repository abstraction when persistence needs a real alternative or repeated query boundaries become difficult to test. Until then, the identity service's parameterized SQL and injected pool keep transaction ownership visible. Separate engine/runner entrypoints belong to their planned milestones, not this review.
 
@@ -84,7 +101,7 @@ pnpm.cmd test:integration
 pnpm.cmd test:guard
 ```
 
-`test:unit` includes React DOM tests in jsdom as well as contracts and infrastructure checks. jsdom is development-only and does not replace a real browser walkthrough. Integration tests need the already-provisioned local `ark_test` database and Docker running. No new migration is required for this review.
+`test:unit` includes React DOM tests in jsdom as well as contracts and infrastructure checks. jsdom is development-only and does not replace a real browser walkthrough. Integration tests need the already-provisioned local `ark_test` database and Docker running. Run `pnpm.cmd db:prepare` after pulling a new migration; the workspace increment adds `002_workspaces.sql`.
 
 An error boundary handles rendering failures, not every asynchronous callback, failed event handler, or broken application download. Expected request failures continue through the API/form error paths. Logging intentionally trades detailed stack traces for privacy; adding richer diagnostics needs a reviewed, sanitized schema. No remote monitoring service was added. A sound V0.1 foundation is not a claim of production readiness or perfection.
 

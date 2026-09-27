@@ -89,3 +89,11 @@ The local API uses opaque 256-bit session tokens in HttpOnly, SameSite=Strict co
 The runtime role is distinct from the administrative migration connection. Migrations are explicit and checksum-verified. The current runtime has scoped table privileges, including insert/read-only audit access; this is not row-level security or an untrusted SQL execution sandbox. The API runs on loopback with exact Host/Origin allowlists and rejects non-JSON mutations. Deployment over a network, invitations, password recovery, membership-management endpoints, session pruning, and a full audit UI remain future work.
 
 The [project architecture guide](../notes/learning/06-project-architecture.md) maps implemented files to these boundaries and explains growth without speculative layers. Root render recovery and sanitized reporting cover unexpected UI rendering failures; expected request failures remain part of the form/API flow. Maintenance/test URL validation and transaction cleanup are infrastructure safeguards. These refinements preserve the existing identity and authorization contracts.
+
+## Implemented workspace boundary
+
+The first V0.2 increment adds team-owned workspace configuration. All active team members can read; admins/developers can create/edit. Repository URL, source ref, default branch, sandbox image, relative directory, and install/test/lint/build actions are stored together as a complete versioned definition. Saving performs no execution or external repository access.
+
+Resources point to immutable snapshots through a deferred current-version foreign key. Resource changes, snapshots, and audit events commit together. Expected revisions prevent lost updates, client-generated creation IDs permit identical request replay, and case-insensitive names are unique within a team. Write authorization holds relevant identity/membership locks for the transaction; it does not rely on the browser's displayed role.
+
+The web workspace feature owns its list/editor and request adapter. React Router's data router enables navigation blocking for dirty forms. Failed saves preserve drafts; unknown stored schemas remain read-only. See [workspace findings](../notes/findings/workspaces.md) for request bounds, pagination, compatibility, and remaining limitations. Agents, flows, secret references, version-history UI, and runners remain later increments.

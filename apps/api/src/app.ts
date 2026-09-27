@@ -8,6 +8,8 @@ import { z } from "zod";
 import { ApiFailure, parseRequest, sendFailure } from "./errors.js";
 import { IdentityService } from "./identity.js";
 import type { SignedInSession } from "./identity.js";
+import { WorkspaceService } from "./workspaces.js";
+import { registerWorkspaceRoutes } from "./workspace-routes.js";
 
 export interface AppOptions {
   pool: Pool;
@@ -70,7 +72,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
         "HOST_NOT_ALLOWED",
         "This host is not allowed.",
       );
-    if (request.method === "POST") {
+    if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method)) {
       if (!origins.has(request.headers.origin ?? ""))
         throw new ApiFailure(
           403,
@@ -94,14 +96,12 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
         ? error.statusCode
         : 500;
     if (status === 429)
-      return reply
-        .code(429)
-        .send({
-          error: {
-            code: "RATE_LIMITED",
-            message: "Too many attempts. Try again shortly.",
-          },
-        });
+      return reply.code(429).send({
+        error: {
+          code: "RATE_LIMITED",
+          message: "Too many attempts. Try again shortly.",
+        },
+      });
     if (status >= 400 && status < 500)
       return sendFailure(
         reply,
@@ -195,6 +195,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     const params = parseRequest(z.object({ teamId: z.uuid() }), request.params);
     return identity.team(request.cookies.ark_session, params.teamId);
   });
+  registerWorkspaceRoutes(app, new WorkspaceService(options.pool, identity));
   await app.ready();
   return app;
 }

@@ -1,7 +1,7 @@
 import type { MeResponse } from "@ark/contracts";
 import { Box, LoaderCircle, RefreshCw, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { api, ApiRequestError, errorMessage } from "./api";
 import { AuthPage } from "./AuthPage";
 import { Shell } from "./Shell";
@@ -137,86 +137,69 @@ function App() {
     setState({ kind: "anonymous" });
   };
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route
-          path="/setup"
-          element={
-            state.kind === "setup" ? (
-              <AuthPage
-                key="setup"
-                mode="setup"
-                onSuccess={accept}
-                onSetupComplete={() =>
-                  setState({
-                    kind: "anonymous",
-                    notice:
-                      "This organization has already been set up. Sign in to continue.",
-                  })
-                }
-              />
-            ) : (
-              <Navigate
-                to={state.kind === "authenticated" ? "/sessions" : "/login"}
-                replace
-              />
-            )
-          }
-        />
-        <Route
-          path="/login"
-          element={
-            state.kind === "anonymous" ? (
-              <AuthPage
-                key="login"
-                mode="login"
-                notice={state.notice}
-                onSuccess={accept}
-                onSetupComplete={() => undefined}
-              />
-            ) : (
-              <Navigate
-                to={state.kind === "setup" ? "/setup" : "/sessions"}
-                replace
-              />
-            )
-          }
-        />
-        <Route
-          path="/sessions"
-          element={
-            state.kind === "authenticated" ? (
-              <Shell
-                me={state.me}
-                onExpired={expired}
-                onLogout={logout}
-                onRefresh={() => setAttempt((value) => value + 1)}
-              />
-            ) : (
-              <Navigate
-                to={state.kind === "setup" ? "/setup" : "/login"}
-                replace
-              />
-            )
-          }
-        />
-        <Route
-          path="*"
-          element={
-            <Navigate
-              to={
-                state.kind === "setup"
-                  ? "/setup"
-                  : state.kind === "authenticated"
-                    ? "/sessions"
-                    : "/login"
+    <Routes>
+      <Route
+        path="/setup"
+        element={
+          state.kind === "setup" ? (
+            <AuthPage
+              key="setup"
+              mode="setup"
+              onSuccess={accept}
+              onSetupComplete={() =>
+                setState({
+                  kind: "anonymous",
+                  notice:
+                    "This organization has already been set up. Sign in to continue.",
+                })
               }
+            />
+          ) : (
+            <Navigate
+              to={state.kind === "authenticated" ? "/sessions" : "/login"}
               replace
             />
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+          )
+        }
+      />
+      <Route
+        path="/login"
+        element={
+          state.kind === "anonymous" ? (
+            <AuthPage
+              key="login"
+              mode="login"
+              notice={state.notice}
+              onSuccess={accept}
+              onSetupComplete={() => undefined}
+            />
+          ) : (
+            <Navigate
+              to={state.kind === "setup" ? "/setup" : "/sessions"}
+              replace
+            />
+          )
+        }
+      />
+      <Route
+        path="/*"
+        element={
+          state.kind === "authenticated" ? (
+            <Shell
+              me={state.me}
+              onExpired={expired}
+              onLogout={logout}
+              onRefresh={() => setAttempt((value) => value + 1)}
+            />
+          ) : (
+            <Navigate
+              to={state.kind === "setup" ? "/setup" : "/login"}
+              replace
+            />
+          )
+        }
+      />
+    </Routes>
   );
 }
 

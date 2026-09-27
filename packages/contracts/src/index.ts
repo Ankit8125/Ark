@@ -1,4 +1,5 @@
 import { z } from "zod";
+export * from "./workspaces.js";
 
 const name = z
   .string()

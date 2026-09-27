@@ -12,7 +12,7 @@ Code, migrations, and reproducible check results establish implemented behavior.
 ## Scope and communication
 
 - Explain the purpose and data flow of each bounded change in plain language.
-- The current checkpoint is the local V0.1 identity foundation. Session execution, catalog editing, invitations, and administration UI are not implemented.
+- The current checkpoint is local V0.1 identity plus the first V0.2 workspace catalog slice. Workspace create/read/edit is implemented; agents, flows, session execution, invitations, and administration UI are not implemented.
 - Follow shared schema -> migration -> backend -> frontend within a feature increment. Do not replace the agreed architecture or implement later releases merely because their libraries are available.
 - Before calling a milestone complete, meet its acceptance criteria and record actual checks, skipped checks, and limitations.
 - Leave paid model calls, cloud provisioning, deployment, and unrelated external actions outside ordinary local-development work unless requested.
