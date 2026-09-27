@@ -2,7 +2,7 @@
 
 An independent, self-hosted development platform being built incrementally: a task becomes a plan, a verified change, a human-approved publication, and a draft pull request. The intended product supports multiple teams with backend-enforced permissions.
 
-**Current status: V0.1 identity foundation implemented.** Create the first organization, owner, and team through the local setup screen; sign in with a persistent cookie session and open the team workspace. A Fastify API checks authentication and team membership against PostgreSQL. Session execution, runner enrollment, AI integration, and task-to-PR workflows belong to later increments.
+**Current status: V0.1 identity plus Workspace and Agent catalogs implemented.** Create the first organization, owner, and team through local setup; sign in and save team-owned configuration with immutable versions and stale-edit protection. A Fastify API validates inputs and checks authentication, explicit team membership, and write roles against PostgreSQL. Ordered flows are next; session execution, runner enrollment, model calls, and task-to-PR workflows belong to later increments. V0.2 is not complete yet.
 
 ## Start reading
 

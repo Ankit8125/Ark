@@ -11,10 +11,11 @@ Keep facts and decisions in focused files; distinguish verified behavior from in
 | [Browser verification](browser-verification.md)   | Design direction, disposable fixtures, CLI walkthrough                         |
 | [Architecture review](architecture-review.md)     | Module boundaries, render recovery, rollback cleanup, local URL validation     |
 | [Workspace catalog](workspaces.md)                | Fields, ownership, immutable snapshots, HTTP contracts, concurrency, and scope |
+| [Agent catalog](agents.md)                        | Stub configuration, kind isolation, shared versioning, text bounds, and scope  |
 
 ## Next decisions
 
-1. Define the next bounded V0.2 agent catalog slice, then ordered flows and authorized version references.
+1. Define the next bounded V0.2 ordered-flow slice and authorized Workspace/Agent version references.
 2. Decide when to add automated browser regression tests; current browser evidence is a CLI walkthrough.
 3. Design invitations, administration, and password recovery before a team-usable release.
 4. Select recoverable OS-backed secret storage before real provider credentials.

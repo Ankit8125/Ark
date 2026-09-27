@@ -1,24 +1,24 @@
-import { WorkspaceListResponseSchema, WorkspaceSchema } from "@ark/contracts";
+import { AgentListResponseSchema, AgentSchema } from "@ark/contracts";
 import type {
-  CreateWorkspaceRequest,
-  UpdateWorkspaceRequest,
-  Workspace,
-  WorkspaceDefinition,
-  WorkspaceListResponse,
+  Agent,
+  AgentDefinition,
+  AgentListResponse,
+  CreateAgentRequest,
+  UpdateAgentRequest,
 } from "@ark/contracts";
 import type { Pool } from "pg";
 import type { IdentityService } from "./identity.js";
 import { VersionedCatalogService } from "./versioned-catalog.js";
 
-export class WorkspaceService {
-  private readonly catalog: VersionedCatalogService<WorkspaceDefinition>;
+export class AgentService {
+  private readonly catalog: VersionedCatalogService<AgentDefinition>;
 
   constructor(pool: Pool, identity: IdentityService) {
     this.catalog = new VersionedCatalogService(
       pool,
       identity,
-      "workspace",
-      WorkspaceSchema.parse,
+      "agent",
+      AgentSchema.parse,
     );
   }
 
@@ -26,10 +26,10 @@ export class WorkspaceService {
     token: string | undefined,
     teamId: string,
     cursor?: string,
-  ): Promise<WorkspaceListResponse> {
+  ): Promise<AgentListResponse> {
     const page = await this.catalog.list(token, teamId, cursor);
-    return WorkspaceListResponseSchema.parse({
-      workspaces: page.resources,
+    return AgentListResponseSchema.parse({
+      agents: page.resources,
       nextCursor: page.nextCursor,
     });
   }
@@ -37,19 +37,19 @@ export class WorkspaceService {
   async get(
     token: string | undefined,
     teamId: string,
-    workspaceId: string,
-  ): Promise<Workspace> {
-    return this.catalog.get(token, teamId, workspaceId);
+    agentId: string,
+  ): Promise<Agent> {
+    return this.catalog.get(token, teamId, agentId);
   }
 
   async create(
     token: string | undefined,
     teamId: string,
-    input: CreateWorkspaceRequest,
-  ): Promise<{ workspace: Workspace; created: boolean }> {
+    input: CreateAgentRequest,
+  ): Promise<{ agent: Agent; created: boolean }> {
     const result = await this.catalog.create(token, teamId, input);
     return {
-      workspace: result.resource,
+      agent: result.resource,
       created: result.created,
     };
   }
@@ -57,9 +57,9 @@ export class WorkspaceService {
   async update(
     token: string | undefined,
     teamId: string,
-    workspaceId: string,
-    input: UpdateWorkspaceRequest,
-  ): Promise<Workspace> {
-    return this.catalog.update(token, teamId, workspaceId, input);
+    agentId: string,
+    input: UpdateAgentRequest,
+  ): Promise<Agent> {
+    return this.catalog.update(token, teamId, agentId, input);
   }
 }

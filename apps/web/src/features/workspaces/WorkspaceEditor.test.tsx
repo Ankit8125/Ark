@@ -29,7 +29,7 @@ import { api, ApiRequestError } from "../../api";
 import { Shell } from "../../Shell";
 import { workspaceApi } from "./api";
 import { WorkspaceEditor } from "./WorkspaceEditor";
-import { useDraftNavigation } from "./useDraftNavigation";
+import { useDraftNavigation } from "../catalog/useDraftNavigation";
 
 const team: Team = {
   id: "b8f983e4-8bfe-4c11-8302-d050c258d883",

@@ -357,7 +357,7 @@ describe("V0.1 identity with real PostgreSQL", () => {
           "SELECT count(*)::int AS count FROM schema_migrations",
         )
       ).rows[0].count,
-    ).toBe(2);
+    ).toBe(3);
     await db.pool.query("UPDATE schema_migrations SET checksum='tampered'");
     await expect(migrate(db.pool)).rejects.toThrow("checksum mismatch");
   });

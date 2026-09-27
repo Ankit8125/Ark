@@ -72,6 +72,6 @@ pnpm.cmd test:guard
 
 ## What the workspace currently means
 
-The Sessions screen displays your saved organization, selected team, and roles. It states that execution is coming later. Workspaces, agents, flows, compute, and secrets are planned navigation entries, not working forms. Invitations, password recovery, member administration, and real agent execution are also future work. The next implementation increment starts with team-owned workspace records.
+The Sessions screen displays your saved organization, selected team, and roles. It states that execution is coming later. [Workspaces](07-workspaces.md) and [Agents](08-agents.md) have versioned configuration forms. Flows, compute, and secrets remain planned navigation entries. Invitations, password recovery, member administration, and real agent execution are also future work. The next bounded increment adds ordered flows with authorized resource references.
 
 Keep this version on your own computer's loopback address. A hosted installation needs its own HTTPS, secure-cookie, trusted-origin, operational, and access-management work.

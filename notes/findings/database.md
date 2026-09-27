@@ -16,7 +16,7 @@ The Compose `ark` user remains the local administrator. `MIGRATION_DATABASE_URL`
 
 ## F008 - Migrations and tests have explicit boundaries
 
-`001_identity.sql` and `002_workspaces.sql` are applied to `ark_dev`. Add later migration files and register their versions instead of editing applied SQL. The runner serializes migration writers, checks stored checksums, and rolls back on failure. Server startup never migrates. The [workspace increment](workspaces.md) adds resources and insert/read-only snapshots; `pnpm.cmd db:prepare` configures their runtime privileges explicitly.
+Migrations `001_identity.sql`, `002_workspaces.sql`, and `003_agents.sql` are applied to `ark_dev`. Add later migration files and register their versions instead of editing applied SQL. The runner serializes migration writers, checks stored checksums, and rolls back on failure. Server startup never migrates. The [Workspace increment](workspaces.md) adds resources and insert/read-only snapshots; `pnpm.cmd db:prepare` configures their runtime privileges explicitly. The [Agent increment](agents.md) expands the kind constraint and reuses those same privileges.
 
 Tests require local `ark_test` and generate unique `ark_test_<hex>` schemas. Cleanup validates database and schema names. Real development setup remains pending; browser accounts are disposable fixtures. Unexpectedly killed tests can leave their own schema behind; inspect and target only those schemas. There is no database-wide reset command.
 

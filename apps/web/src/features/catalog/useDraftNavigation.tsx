@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBlocker } from "react-router-dom";
-import type { DraftStatus } from "./WorkspaceEditor";
+import type { DraftStatus } from "./useVersionedEditor";
 import common from "../../App.module.css";
-import styles from "./workspaces.module.css";
+import styles from "./catalog.module.css";
 
-export function useDraftNavigation() {
+export function useDraftNavigation(kind: "workspace" | "agent" = "workspace") {
   const draftRef = useRef<DraftStatus>({ dirty: false, busy: false });
   const [draftStatus, setDraftStatus] = useState<DraftStatus>({
     dirty: false,
@@ -36,7 +36,7 @@ export function useDraftNavigation() {
     if (draftRef.current.busy) return false;
     if (
       draftRef.current.dirty &&
-      !window.confirm("Discard your unsaved workspace changes and leave?")
+      !window.confirm(`Discard your unsaved ${kind} changes and leave?`)
     )
       return false;
     return true;
@@ -47,15 +47,15 @@ export function useDraftNavigation() {
       <section
         className={styles.notice}
         role="alertdialog"
-        aria-labelledby="leave-workspace-heading"
-        aria-describedby="leave-workspace-description"
+        aria-labelledby="leave-catalog-heading"
+        aria-describedby="leave-catalog-description"
       >
-        <h2 id="leave-workspace-heading">
+        <h2 id="leave-catalog-heading">
           {draftStatus.busy
             ? "A request is still in progress"
-            : "Leave this workspace?"}
+            : `Leave this ${kind}?`}
         </h2>
-        <p id="leave-workspace-description">
+        <p id="leave-catalog-description">
           {draftStatus.busy
             ? "Wait for the request to finish before leaving this page."
             : draftStatus.dirty

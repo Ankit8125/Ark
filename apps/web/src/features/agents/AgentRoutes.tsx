@@ -1,33 +1,31 @@
 import type { Team } from "@ark/contracts";
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
-import { WorkspaceEditor } from "./WorkspaceEditor";
 import type { DraftStatus } from "../catalog/useVersionedEditor";
-import { WorkspaceList } from "./WorkspaceList";
+import { AgentEditor } from "./AgentEditor";
+import { AgentList } from "./AgentList";
 
 type Props = {
   team: Team;
   onExpired: () => void;
   onDraftStatus: (status: DraftStatus) => void;
 };
-
-function SavedWorkspace(props: Props) {
-  const { workspaceId } = useParams();
+function SavedAgent(props: Props) {
+  const { agentId } = useParams();
   return (
-    <WorkspaceEditor
-      key={`${props.team.id}:${workspaceId}`}
+    <AgentEditor
+      key={`${props.team.id}:${agentId}`}
       {...props}
-      workspaceId={workspaceId}
+      agentId={agentId}
     />
   );
 }
-
-export function WorkspaceRoutes(props: Props) {
+export function AgentRoutes(props: Props) {
   return (
     <Routes>
       <Route
         index
         element={
-          <WorkspaceList
+          <AgentList
             key={props.team.id}
             team={props.team}
             onExpired={props.onExpired}
@@ -36,10 +34,10 @@ export function WorkspaceRoutes(props: Props) {
       />
       <Route
         path="new"
-        element={<WorkspaceEditor key={`${props.team.id}:new`} {...props} />}
+        element={<AgentEditor key={`${props.team.id}:new`} {...props} />}
       />
-      <Route path=":workspaceId" element={<SavedWorkspace {...props} />} />
-      <Route path="*" element={<Navigate to="/workspaces" replace />} />
+      <Route path=":agentId" element={<SavedAgent {...props} />} />
+      <Route path="*" element={<Navigate to="/agents" replace />} />
     </Routes>
   );
 }

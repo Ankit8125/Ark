@@ -54,3 +54,7 @@ Ports 5173 and 5174 were already occupied by older servers. Verification used 51
 ## Workspace increment, 2026-09-27
 
 The same disposable-database approach verified workspace creation, all-field reload fidelity, two-tab stale conflicts, offline-save retry, and canceled dirty navigation. Desktop and 390px mobile forms were inspected. See the [workspace implementation record](../progress/2026-09-27-01-workspaces.md) for the actual walkthrough, automated coverage, and limits. The existing visual direction was retained; Refero remained unavailable with NO_SUBSCRIPTION, and no subscription or design dependency was added.
+
+## Agent increment, 2026-09-27
+
+The [Agent implementation record](../progress/2026-09-27-02-agents.md) records complete field reload checks, a two-tab revision conflict, offline-save recovery, Agent-specific navigation protection, and desktop/mobile inspection. The refactored Workspace form also preserved all 11 controls after save/reload. Both resources could share a display name without mixing their catalogs. The browser and QA servers were stopped, and the identified test schema's removal was verified. Role/schema cases remain separate DOM/API evidence; this walkthrough is not a full end-to-end regression suite.

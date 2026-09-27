@@ -61,4 +61,4 @@ Leaving a dirty form prompts before discarding input. Drafts exist only in the o
 
 ## Scope and verification
 
-This is the workspace portion of V0.2. Agents, ordered flows, history browsing, deletion/archive, secret references, and session execution remain future work. See the [workspace findings](../findings/workspaces.md) for the API/storage contract and the [implementation record](../progress/2026-09-27-01-workspaces.md) for actual checks and limits.
+This is the workspace portion of V0.2. The subsequent [Agent increment](08-agents.md) adds instruction/preference configuration. Ordered flows, history browsing, deletion/archive, secret references, and session execution remain future work. See the [workspace findings](../findings/workspaces.md) for the API/storage contract and the [implementation record](../progress/2026-09-27-01-workspaces.md) for the original checks and limits.

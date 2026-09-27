@@ -32,7 +32,8 @@ import {
 import { api, ApiRequestError, errorMessage } from "./api";
 import styles from "./App.module.css";
 import { WorkspaceRoutes } from "./features/workspaces/WorkspaceRoutes";
-import { useDraftNavigation } from "./features/workspaces/useDraftNavigation";
+import { AgentRoutes } from "./features/agents/AgentRoutes";
+import { useDraftNavigation } from "./features/catalog/useDraftNavigation";
 
 type Props = {
   me: MeResponse;
@@ -60,8 +61,10 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
   const workspacesPage = location.pathname.startsWith("/workspaces");
+  const agentsPage = location.pathname.startsWith("/agents");
+  const catalogPage = workspacesPage || agentsPage;
   const { onDraftStatus, confirmLeave, prompt, draftStatus } =
-    useDraftNavigation();
+    useDraftNavigation(agentsPage ? "agent" : "workspace");
   const [choice, setChoice] = useState(() => rememberedTeam(me));
   const selected = me.teams.find((team) => team.id === choice) ?? me.teams[0];
   const [teamState, setTeamState] = useState<TeamState>({ kind: "loading" });
@@ -242,6 +245,7 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
               setChoice(event.target.value);
               setTeamState({ kind: "loading" });
               if (workspacesPage) void navigate("/workspaces");
+              if (agentsPage) void navigate("/agents");
             }}
             disabled={!me.teams.length || draftStatus.busy}
           >
@@ -284,7 +288,18 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
               <FolderGit2 size={17} aria-hidden="true" />
               <span>Workspaces</span>
             </NavLink>
-            {future("Agents", Bot)}
+            <NavLink
+              to="/agents"
+              className={({ isActive }) =>
+                isActive ? styles.activeNav : styles.navLink
+              }
+              onClick={() => {
+                if (navigationOpen) closeNavigation();
+              }}
+            >
+              <Bot size={17} aria-hidden="true" />
+              <span>Agents</span>
+            </NavLink>
             {future("Flows", GitBranch)}
             {future("Tools & MCP", Network)}
           </div>
@@ -331,7 +346,13 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
             </button>
             <span>{selected?.name ?? me.organization.name}</span>
             <ChevronRight size={14} aria-hidden="true" />
-            <strong>{workspacesPage ? "Workspaces" : "Sessions"}</strong>
+            <strong>
+              {workspacesPage
+                ? "Workspaces"
+                : agentsPage
+                  ? "Agents"
+                  : "Sessions"}
+            </strong>
           </div>
           <details
             className={styles.userMenu}
@@ -380,8 +401,8 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
               <div>
                 <p>
                   {teamState.refreshError
-                    ? `${teamState.refreshError} Your open workspace and draft have been kept. Saving is paused until team access is checked.`
-                    : "Checking updated team access. Your open workspace and draft have been kept; saving is temporarily paused."}
+                    ? `${teamState.refreshError} Your open ${agentsPage ? "agent" : "workspace"} and draft have been kept. Saving is paused until team access is checked.`
+                    : `Checking updated team access. Your open ${agentsPage ? "agent" : "workspace"} and draft have been kept; saving is temporarily paused.`}
                 </p>
                 {teamState.refreshError && (
                   <button
@@ -397,7 +418,7 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
               </div>
             </section>
           )}
-          {!workspacesPage && (
+          {!catalogPage && (
             <div className={styles.pageHeading}>
               <div>
                 <div className={styles.eyebrow}>Run</div>
@@ -464,6 +485,16 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
             </section>
           ) : (
             <Routes>
+              <Route
+                path="/agents/*"
+                element={
+                  <AgentRoutes
+                    team={team}
+                    onExpired={onExpired}
+                    onDraftStatus={onDraftStatus}
+                  />
+                }
+              />
               <Route
                 path="/workspaces/*"
                 element={

@@ -10,6 +10,8 @@ import { IdentityService } from "./identity.js";
 import type { SignedInSession } from "./identity.js";
 import { WorkspaceService } from "./workspaces.js";
 import { registerWorkspaceRoutes } from "./workspace-routes.js";
+import { AgentService } from "./agents.js";
+import { registerAgentRoutes } from "./agent-routes.js";
 
 export interface AppOptions {
   pool: Pool;
@@ -196,6 +198,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     return identity.team(request.cookies.ark_session, params.teamId);
   });
   registerWorkspaceRoutes(app, new WorkspaceService(options.pool, identity));
+  registerAgentRoutes(app, new AgentService(options.pool, identity));
   await app.ready();
   return app;
 }

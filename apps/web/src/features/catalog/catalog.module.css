@@ -52,7 +52,7 @@
 .list li + li {
   border-top: 1px solid var(--border);
 }
-.workspaceRow {
+.resourceRow {
   display: flex;
   align-items: center;
   gap: 15px;
@@ -60,25 +60,25 @@
   text-decoration: none;
   min-width: 0;
 }
-.workspaceRow:hover {
+.resourceRow:hover {
   background: var(--surface-muted);
 }
-.workspaceRow > svg {
+.resourceRow > svg {
   color: var(--text-muted);
 }
-.workspaceName {
+.resourceName {
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: 3px;
   min-width: 0;
 }
-.workspaceName strong {
+.resourceName strong {
   font-weight: 550;
   overflow-wrap: anywhere;
 }
-.workspaceName > span,
-.workspaceRow time {
+.resourceName > span,
+.resourceRow time {
   color: var(--text-muted);
   font-size: 12px;
 }
@@ -138,7 +138,8 @@
   font-weight: 400;
 }
 .field input,
-.field textarea {
+.field textarea,
+.field select {
   border: 1px solid var(--border-strong);
   border-radius: 5px;
   background: var(--surface);
@@ -157,7 +158,8 @@
   font-size: 12px;
 }
 .field input:hover,
-.field textarea:hover {
+.field textarea:hover,
+.field select:hover {
   border-color: var(--text-subtle);
 }
 .field [aria-invalid="true"] {
@@ -208,6 +210,46 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.capabilities {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.capability {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.capability input {
+  margin: 3px 0 0;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+.capability > span {
+  display: grid;
+  gap: 2px;
+}
+.capability strong {
+  font-weight: 550;
+  font-size: 13px;
+}
+.capability span span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.capabilities:disabled .capability {
+  background: var(--surface-muted);
+  cursor: default;
+}
 @media (max-width: 760px) {
   .fieldGrid {
     grid-template-columns: 1fr;
@@ -215,11 +257,11 @@
   .formPanel {
     padding: 18px;
   }
-  .workspaceRow {
+  .resourceRow {
     padding: 16px;
     flex-wrap: wrap;
   }
-  .workspaceRow time {
+  .resourceRow time {
     margin-left: 34px;
     flex-basis: 100%;
   }

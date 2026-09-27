@@ -96,4 +96,12 @@ The first V0.2 increment adds team-owned workspace configuration. All active tea
 
 Resources point to immutable snapshots through a deferred current-version foreign key. Resource changes, snapshots, and audit events commit together. Expected revisions prevent lost updates, client-generated creation IDs permit identical request replay, and case-insensitive names are unique within a team. Write authorization holds relevant identity/membership locks for the transaction; it does not rely on the browser's displayed role.
 
-The web workspace feature owns its list/editor and request adapter. React Router's data router enables navigation blocking for dirty forms. Failed saves preserve drafts; unknown stored schemas remain read-only. See [workspace findings](../notes/findings/workspaces.md) for request bounds, pagination, compatibility, and remaining limitations. Agents, flows, secret references, version-history UI, and runners remain later increments.
+The web workspace feature owns its field layout and request adapter. React Router's data router enables navigation blocking for dirty forms. Failed saves preserve drafts; unknown stored schemas remain read-only. See [workspace findings](../notes/findings/workspaces.md) for request bounds, pagination, compatibility, and remaining limitations.
+
+## Implemented Agent and shared catalog boundary
+
+The second V0.2 increment adds team-owned Agent definitions: instructions, a `stub` runtime choice, nullable model preference, and requested file/command capabilities. Saving only records configuration; these fields neither grant authority nor invoke an executor. Real runtime/provider compatibility and effective permissions belong to execution milestones.
+
+Migration 003 expands the existing resource kinds without rewriting earlier migrations. Kind joins organization/team/ID as a required lookup boundary. Workspace and Agent names are unique within their own kind. Both concrete services use a small internal versioned-catalog implementation for transaction, authorization, revision, audit, and replay behavior. Explicit feature contracts and HTTP modules keep domain decisions visible.
+
+The browser shares list loading, editor recovery, and navigation protection while each feature keeps its own fields and API adapter. This extraction has two actual consumers and avoids duplicated concurrency/security behavior. No new library, generic form engine, or replacement architecture was introduced. See [Agent findings](../notes/findings/agents.md) for bounds and constraints. Ordered flows, authorized version references, history/restore, archive, secret references, and runners remain future increments.

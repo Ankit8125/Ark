@@ -1,5 +1,6 @@
 import { z } from "zod";
 export * from "./workspaces.js";
+export * from "./agents.js";
 
 const name = z
   .string()

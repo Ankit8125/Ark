@@ -2,7 +2,7 @@
 
 Updated 2026-09-27. [Learning index](README.md)
 
-Ark is a TypeScript modular monolith: one application with explicit boundaries, rather than a separate deployed service for every responsibility. This is the recommended structure for V0.1 identity and the first V0.2 workspace slice. The tree shows relevant implemented files, with repeated configuration and assets omitted.
+Ark is a TypeScript modular monolith: one application with explicit boundaries. This is the recommended structure for V0.1 identity and the V0.2 Workspace/Agent slices. The tree shows relevant implemented files, with repeated configuration and assets omitted.
 
 ```text
 ark/
@@ -12,15 +12,26 @@ ark/
 |   |   |-- App.tsx                  # Routes and session lifecycle
 |   |   |-- AuthPage.tsx             # Setup/login form
 |   |   |-- Shell.tsx                # Team-aware application layout
-|   |   |-- features/workspaces/
-|   |   |   |-- WorkspaceRoutes.tsx # Catalog route composition
-|   |   |   |-- WorkspaceList.tsx   # Paginated team catalog
-|   |   |   |-- WorkspaceEditor.tsx # Complete definition form and save recovery
-|   |   |   |-- useDraftNavigation.tsx # Dirty-form route protection
-|   |   |   |-- permissions.ts     # UI role capability projection
-|   |   |   |-- api.ts             # Workspace HTTP adapter
-|   |   |   |-- WorkspaceEditor.test.tsx # Editor and shell DOM regressions
-|   |   |   `-- workspaces.module.css
+|   |   |-- features/
+|   |   |   |-- workspaces/
+|   |   |   |   |-- WorkspaceRoutes.tsx # Workspace route composition
+|   |   |   |   |-- WorkspaceList.tsx   # Workspace list adapter
+|   |   |   |   |-- WorkspaceEditor.tsx # Explicit repository/environment fields
+|   |   |   |   |-- api.ts              # Validated Workspace HTTP adapter
+|   |   |   |   `-- WorkspaceEditor.test.tsx # Editor and shell regressions
+|   |   |   |-- agents/
+|   |   |   |   |-- AgentRoutes.tsx     # Agent route composition
+|   |   |   |   |-- AgentList.tsx       # Agent list adapter
+|   |   |   |   |-- AgentEditor.tsx     # Explicit instructions/preferences fields
+|   |   |   |   |-- api.ts              # Validated Agent HTTP adapter
+|   |   |   |   `-- AgentEditor.test.tsx # Agent DOM regressions
+|   |   |   `-- catalog/
+|   |   |       |-- useVersionedEditor.ts # Shared save/load/conflict lifecycle
+|   |   |       |-- CatalogEditor.tsx  # Shared form chrome and field component
+|   |   |       |-- CatalogList.tsx    # Paginated loading and recovery
+|   |   |       |-- useDraftNavigation.tsx # Dirty/busy navigation protection
+|   |   |       |-- permissions.ts     # UI role projection; server is authority
+|   |   |       `-- catalog.module.css
 |   |   |-- api.ts                   # HTTP calls and response validation
 |   |   |-- ErrorBoundary.tsx        # Recovery from rendering failures
 |   |   |-- error-reporting.ts       # Sanitized React logging hooks
@@ -31,20 +42,26 @@ ark/
 |       |-- server.ts               # Process configuration and startup
 |       |-- app.ts                  # HTTP routes and request guards
 |       |-- identity.ts             # Identity use cases and authorization
-|       |-- workspace-routes.ts     # Catalog HTTP request/response adaptation
-|       |-- workspaces.ts           # Catalog use cases, transactions, SQL
+|       |-- workspace-routes.ts     # Workspace HTTP adaptation
+|       |-- workspaces.ts           # Concrete Workspace service/response contract
+|       |-- agent-routes.ts         # Agent HTTP adaptation
+|       |-- agents.ts               # Concrete Agent service/response contract
+|       |-- versioned-catalog.ts    # Shared authorized transactions and SQL
 |       |-- credentials.ts          # Password and session-token operations
 |       |-- errors.ts               # Validation and safe API failures
 |       `-- index.ts                # Public factory export
 |-- packages/
 |   |-- contracts/src/
 |   |   |-- index.ts                # Identity schemas and public exports
-|   |   `-- workspaces.ts           # Workspace schemas and inferred types
+|   |   |-- workspaces.ts           # Workspace schemas and inferred types
+|   |   |-- agents.ts               # Agent schemas and inferred types
+|   |   `-- catalog-text.ts         # Shared PostgreSQL-safe text validator
 |   `-- db/
 |       |-- src/index.ts            # Pool, transactions, migration runner
 |       `-- migrations/
 |           |-- 001_identity.sql
-|           `-- 002_workspaces.sql
+|           |-- 002_workspaces.sql
+|           `-- 003_agents.sql
 |-- scripts/
 |   |-- lib/local-database-url.mjs   # Local maintenance/test URL validation
 |   |-- lib/local-database-url.d.mts # Types for the JavaScript helper
@@ -79,9 +96,11 @@ For example, a URL that names loopback but adds a remote `host` query parameter 
 
 ## How this grows
 
-V0.2 now has a focused `features/workspaces/` folder in the web app, a workspace service and route module in the API, and a domain-specific contracts file. The API's two catalog files remain flat while the module is small; introduce a folder when additional responsibilities justify it. Move identity files together when that makes navigation easier. Keep public contract exports and add new numbered SQL migrations; never edit applied migrations.
+V0.2 has focused `features/workspaces/` and `features/agents/` folders, concrete service/route modules in the API, and domain-specific contracts. Shared catalog behavior lives beside these features. Introduce deeper backend folders when additional responsibilities justify them. Keep public contract exports and add new numbered SQL migrations; never edit applied migrations.
 
-Workspace saves validate the full definition, reauthorize the team in a transaction, lock/check its revision, and commit a new snapshot plus audit event. React Router's data router supplies dirty-form navigation blocking without replacing Vite or React. The [workspace guide](07-workspaces.md) explains this flow and its recovery behavior.
+Both catalog saves validate the full definition, reauthorize the team in a transaction, lock/check its revision, validate the resulting public response, and commit a new snapshot plus audit event. Kind is checked alongside team and organization. React Router's data router supplies dirty-form navigation blocking without replacing Vite or React. The [Workspace](07-workspaces.md) and [Agent](08-agents.md) guides explain each definition and its recovery behavior.
+
+The second catalog exposes real duplication, so transaction handling and browser recovery now have shared implementations. Field layouts, contracts, and endpoint adapters remain feature-owned. A single place for conflict/retry/authorization mechanics reduces the risk that one feature receives a fix while another misses it. The trade-off is that shared changes require both features' regression tests. There is no dynamic form schema or speculative plugin system.
 
 Extract a repository abstraction when persistence needs a real alternative or repeated query boundaries become difficult to test. Until then, the identity service's parameterized SQL and injected pool keep transaction ownership visible. Separate engine/runner entrypoints belong to their planned milestones, not this review.
 
@@ -101,7 +120,7 @@ pnpm.cmd test:integration
 pnpm.cmd test:guard
 ```
 
-`test:unit` includes React DOM tests in jsdom as well as contracts and infrastructure checks. jsdom is development-only and does not replace a real browser walkthrough. Integration tests need the already-provisioned local `ark_test` database and Docker running. Run `pnpm.cmd db:prepare` after pulling a new migration; the workspace increment adds `002_workspaces.sql`.
+`test:unit` includes React DOM tests in jsdom as well as contracts and infrastructure checks. jsdom is development-only and does not replace a real browser walkthrough. Integration tests need the already-provisioned local `ark_test` database and Docker running. Run `pnpm.cmd db:prepare` after pulling a new migration; the Agent increment adds `003_agents.sql`.
 
 An error boundary handles rendering failures, not every asynchronous callback, failed event handler, or broken application download. Expected request failures continue through the API/form error paths. Logging intentionally trades detailed stack traces for privacy; adding richer diagnostics needs a reviewed, sanitized schema. No remote monitoring service was added. A sound V0.1 foundation is not a claim of production readiness or perfection.
 

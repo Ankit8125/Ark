@@ -1,5 +1,5 @@
 import type { Team } from "@ark/contracts";
 
-export function canEditWorkspaces(team: Team) {
+export function canEditCatalog(team: Team) {
   return team.role === "admin" || team.role === "developer";
 }

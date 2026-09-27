@@ -336,7 +336,7 @@ export class IdentityService {
       throw new ApiFailure(
         403,
         "FORBIDDEN",
-        "Your team role does not allow workspace changes.",
+        "Your team role does not allow catalog changes.",
       );
     return {
       userId: identity.user_id,

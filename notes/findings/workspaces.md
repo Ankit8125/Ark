@@ -6,11 +6,11 @@ Recorded 2026-09-27. [Findings index](README.md)
 
 The first V0.2 slice stores team-owned workspace configuration only. `packages/contracts/src/workspaces.ts` owns strict Zod request schemas and inferred types. Source ref and default branch are separate. Actions retain all four supported keys and their whitespace. HTTPS repository URLs reject credentials, queries, fragments, and control characters. Relative working directories reject traversal. Every text field rejects NUL and unpaired UTF-16 surrogates because PostgreSQL text/JSON cannot store them; valid Unicode pairs remain supported. This validates configuration syntax, not remote availability or execution safety.
 
-`apps/api/src/workspace-routes.ts` adapts HTTP to `WorkspaceService` in `workspaces.ts`. Identity supplies shared team authorization; the service owns parameterized SQL and transaction boundaries. `apps/web/src/features/workspaces/` owns catalog UI and its HTTP adapter. No generic repository framework or additional runtime dependency was introduced.
+`apps/api/src/workspace-routes.ts` adapts HTTP to `WorkspaceService` in `workspaces.ts`. With the subsequent [Agent increment](agents.md), both concrete services delegate parameterized SQL and transaction invariants to `versioned-catalog.ts`; identity supplies team authorization. The web Workspace feature keeps its fields and HTTP adapter while `features/catalog/` shares loading/recovery/navigation behavior. No generic repository framework or additional runtime dependency was introduced.
 
 ## Storage and write consistency
 
-Migration `002_workspaces.sql` introduces `resources` and `resource_versions`. The kind constraint permits only workspaces today; future catalog kinds require a new migration. A composite team/organization foreign key prevents mismatched ownership. Names are unique per team and kind, ignoring case. Versions have independent IDs, positive schema versions, and a unique resource/revision pair.
+Migration `002_workspaces.sql` introduces `resources` and `resource_versions`. The subsequent `003_agents.sql` expands the original workspace-only kind constraint to include Agents; further kinds require new migrations. A composite team/organization foreign key prevents mismatched ownership. Names are unique per team and kind, ignoring case. Versions have independent IDs, positive schema versions, and a unique resource/revision pair.
 
 The deferred foreign key from a resource's current revision to its snapshot prevents a committed dangling revision. Every write atomically stores the current pointer, a complete snapshot, and an audit event. Audits contain the workspace ID and revision, not URLs, actions, or the full definition. Audit failure rolls back the whole write.
 

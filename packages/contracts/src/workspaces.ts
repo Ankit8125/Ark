@@ -1,12 +1,6 @@
 import { z } from "zod";
+import { CatalogTextSchema as text } from "./catalog-text.js";
 
-// PostgreSQL text/jsonb cannot represent NUL or unpaired UTF-16 surrogates.
-// Unicode mode treats valid surrogate pairs as one code point, preserving emoji.
-const text = z.string().refine(
-  // oxlint-disable-next-line no-control-regex -- Intentionally rejects PostgreSQL-incompatible characters.
-  (value) => !/[\u0000\uD800-\uDFFF]/u.test(value),
-  "Use valid Unicode text without null characters.",
-);
 const name = text.trim().min(1, "Enter a workspace name.").max(80);
 const repositoryUrl = text
   .trim()
