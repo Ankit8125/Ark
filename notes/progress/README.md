@@ -4,7 +4,7 @@ Updated 2026-10-01 (Asia/Kolkata). Keep this page concise; detailed evidence bel
 
 ## Current checkpoint
 
-**Verified locally: V0.1 identity plus V0.2 Workspace, Agent, and ordered Flow catalogs.** All three catalogs support create/read/edit with immutable revisions; Flows pin exact dependency versions. The [Flow acceptance record](2026-10-01-01-flow-completion.md) records the completed checks and remaining scope. V0.2 as a whole is not complete. Session execution, invitations, runners, and model calls remain future work.
+**Verified and published: V0.1 identity plus V0.2 Workspace, Agent, and ordered Flow catalogs.** All three catalogs support create/read/edit with immutable revisions; Flows pin exact dependency versions. The [Flow acceptance record](2026-10-01-01-flow-completion.md) records the completed checks and remaining scope. V0.2 as a whole is not complete. Session execution, invitations, runners, and model calls remain future work.
 
 | Area              | Evidence                                                                                                  |
 | ----------------- | --------------------------------------------------------------------------------------------------------- |
@@ -41,8 +41,8 @@ The original V0.1 browser verification used separate test ports and a separate d
 
 ## Synchronization
 
-Prior checkpoints through `5048b07` (Agent catalog) were pushed to main and verified against GitHub. Origin was fetched and matched that base during resumed Flow verification. Flow acceptance is complete; explicit staging, the publication guard, commit, and remote verification are the remaining administrative steps for this record.
+Flow implementation commit `3374c32e02833c5de190c8e38c87ca7781fd4349` was pushed to `origin/main` on October 1 without force. `git ls-remote` confirmed that GitHub main exactly matched local HEAD; the working tree was clean at that checkpoint. This documentation update follows that verified implementation commit. Explicit staging, manual public-content review, the staged guard, and the installed commit hook all passed.
 
 ## Next bounded step
 
-After recording Flow publication, add history browsing/restore as a new immutable revision with current authorization, expected-revision checks, and revalidated dependencies. Keep archive/templates separate. Runner execution and real model calls remain later milestones.
+Add history browsing/restore as a new immutable revision with current authorization, expected-revision checks, and revalidated dependencies. Keep archive/templates separate. Runner execution and real model calls remain later milestones.

@@ -66,7 +66,9 @@ The abandoned September 28 browser schema was identified uniquely using its fict
 
 ## Publication and next step
 
-Base commit: `5048b079a35db27f57f4d8331f0ae344cd2c342a`. Origin was fetched again on October 1 and matched that base, with no remote divergence. All 58 selected source/test/documentation files passed manual public-content review and `pnpm.cmd check:staged`; the installed commit hook repeats the guard. Whitespace checks passed, and all 38 public Markdown files had valid local links. Credentials, private planning, browser logs, and screenshots remained ignored. Commit and GitHub synchronization follow this acceptance record; publication is not yet claimed by this version of the note.
+Base commit: `5048b079a35db27f57f4d8331f0ae344cd2c342a`. Origin was fetched again on October 1 and matched that base, with no remote divergence. All 58 selected source/test/documentation files passed manual public-content review and `pnpm.cmd check:staged`; the installed commit hook also passed. Whitespace checks passed, and all 38 public Markdown files had valid local links. Credentials, private planning, browser logs, and screenshots remained ignored.
+
+Implementation commit `3374c32e02833c5de190c8e38c87ca7781fd4349` (`feat: add versioned ordered Flow catalog`) was pushed to `origin/main` without force. A fresh `git ls-remote origin refs/heads/main` returned the same full SHA as local HEAD, and the working tree was clean. This follow-up documentation change records that completed publication, without claiming that a commit can contain its own hash.
 
 Next: history browsing and restore as a new immutable revision, with current authorization, expected-revision checks, and fresh Flow dependency validation. Keep archive/templates separate. The JSON references currently have no relational edge table; future archive, transfer, and deletion must account for inbound references explicitly.
 
