@@ -10,5 +10,6 @@ Read these in order or open the topic you need:
 6. [Project architecture](06-project-architecture.md): folder tree, request flow, recovery, and growth decisions.
 7. [Workspaces](07-workspaces.md): create/edit configuration, saved versions, conflicts, and updated startup commands.
 8. [Agents](08-agents.md): instructions, stub runtime, model preferences, capabilities, and versioned editing.
+9. [Ordered Flows](09-flows.md): named inputs/outputs, ordered stages, pinned versions, validation, and save recovery.
 
 Use [current progress](../progress/README.md) for verification and [findings](../findings/README.md) for durable decisions. Give future topics their own files and keep existing explanations aligned with implemented behavior.

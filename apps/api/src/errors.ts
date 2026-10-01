@@ -27,7 +27,7 @@ export function parseRequest<T>(schema: ZodType<T>, body: unknown): T {
 
   const fieldErrors: Record<string, string[]> = {};
   for (const issue of parsed.error.issues) {
-    const key = typeof issue.path[0] === "string" ? issue.path[0] : "_form";
+    const key = issue.path.length ? issue.path.map(String).join(".") : "_form";
     (fieldErrors[key] ??= []).push(issue.message);
   }
   throw new ApiFailure(

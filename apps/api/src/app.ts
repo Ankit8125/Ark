@@ -12,6 +12,8 @@ import { WorkspaceService } from "./workspaces.js";
 import { registerWorkspaceRoutes } from "./workspace-routes.js";
 import { AgentService } from "./agents.js";
 import { registerAgentRoutes } from "./agent-routes.js";
+import { FlowService } from "./flows.js";
+import { registerFlowRoutes } from "./flow-routes.js";
 
 export interface AppOptions {
   pool: Pool;
@@ -199,6 +201,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   });
   registerWorkspaceRoutes(app, new WorkspaceService(options.pool, identity));
   registerAgentRoutes(app, new AgentService(options.pool, identity));
+  registerFlowRoutes(app, new FlowService(options.pool, identity));
   await app.ready();
   return app;
 }

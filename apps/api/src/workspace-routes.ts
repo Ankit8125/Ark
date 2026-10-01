@@ -3,6 +3,7 @@ import {
   UpdateWorkspaceRequestSchema,
   WorkspaceListQuerySchema,
   WorkspaceParamsSchema,
+  WorkspaceVersionParamsSchema,
 } from "@ark/contracts";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -33,6 +34,20 @@ export function registerWorkspaceRoutes(
         request.cookies.ark_session,
         teamId,
         workspaceId,
+      ),
+    };
+  });
+  app.get(`${detailPath}/versions/:versionId`, async (request) => {
+    const { teamId, workspaceId, versionId } = parseRequest(
+      WorkspaceVersionParamsSchema,
+      request.params,
+    );
+    return {
+      version: await workspaces.getVersion(
+        request.cookies.ark_session,
+        teamId,
+        workspaceId,
+        versionId,
       ),
     };
   });

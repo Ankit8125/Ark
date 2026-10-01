@@ -51,4 +51,4 @@ Leaving with unsaved changes asks before discarding. Drafts remain only in the o
 
 ## Where this fits
 
-Workspaces describe repository and environment configuration. Agents describe instructions and preferences. The next bounded increment is an ordered Flow that refers to authorized, immutable Workspace and Agent versions. Session execution, runners, and real model adapters belong to later milestones. See [Agent findings](../findings/agents.md) for the storage/security contract and [progress](../progress/README.md) for verified checks.
+Workspaces describe repository and environment configuration. Agents describe instructions and preferences. The verified [Flow editor](09-flows.md) refers to authorized, immutable Workspace and Agent versions. Changing an Agent creates a new version and does not advance existing Flow pins. Session execution, runners, and real model adapters belong to later milestones. See [Agent findings](../findings/agents.md) for the storage/security contract and [progress](../progress/README.md) for verified checks.

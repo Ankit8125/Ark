@@ -28,8 +28,8 @@ export function CatalogList({
 }: {
   team: Team;
   onExpired: () => void;
-  kind: "workspace" | "agent";
-  plural: "workspaces" | "agents";
+  kind: "workspace" | "agent" | "flow";
+  plural: "workspaces" | "agents" | "flows";
   title: string;
   description: string;
   createDescription: string;

@@ -1,6 +1,7 @@
 import { WorkspaceListResponseSchema, WorkspaceSchema } from "@ark/contracts";
 import type {
   CreateWorkspaceRequest,
+  ResourceVersion,
   UpdateWorkspaceRequest,
   Workspace,
   WorkspaceDefinition,
@@ -40,6 +41,15 @@ export class WorkspaceService {
     workspaceId: string,
   ): Promise<Workspace> {
     return this.catalog.get(token, teamId, workspaceId);
+  }
+
+  async getVersion(
+    token: string | undefined,
+    teamId: string,
+    workspaceId: string,
+    versionId: string,
+  ): Promise<ResourceVersion> {
+    return this.catalog.getVersion(token, teamId, workspaceId, versionId);
   }
 
   async create(

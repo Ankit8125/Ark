@@ -1,6 +1,6 @@
 # Database findings
 
-Updated 2026-09-27. [Findings index](README.md)
+Updated 2026-10-01. [Findings index](README.md)
 
 ## F003 - Host port and authenticated access
 
@@ -16,7 +16,9 @@ The Compose `ark` user remains the local administrator. `MIGRATION_DATABASE_URL`
 
 ## F008 - Migrations and tests have explicit boundaries
 
-Migrations `001_identity.sql`, `002_workspaces.sql`, and `003_agents.sql` are applied to `ark_dev`. Add later migration files and register their versions instead of editing applied SQL. The runner serializes migration writers, checks stored checksums, and rolls back on failure. Server startup never migrates. The [Workspace increment](workspaces.md) adds resources and insert/read-only snapshots; `pnpm.cmd db:prepare` configures their runtime privileges explicitly. The [Agent increment](agents.md) expands the kind constraint and reuses those same privileges.
+Migrations `001_identity.sql`, `002_workspaces.sql`, `003_agents.sql`, and `004_flows.sql` are applied to `ark_dev`. Add later migration files and register their versions instead of editing applied SQL. The runner serializes migration writers, checks stored checksums, and rolls back on failure. Server startup never migrates. The [Workspace increment](workspaces.md) adds resources and insert/read-only snapshots; `pnpm.cmd db:prepare` configures their runtime privileges explicitly. The [Agent](agents.md) and [Flow](flows.md) increments expand the kind constraint and reuse those same privileges.
+
+The final 2026-10-01 check connected as `ark_app` to `ark_dev`, found four migrations, zero users, and zero Workspaces, Agents, or Flows. Thus first-owner setup was still available at that verification; this is a dated observation, not a guarantee that later user activity leaves the database empty.
 
 Tests require local `ark_test` and generate unique `ark_test_<hex>` schemas. Cleanup validates database and schema names. Real development setup remains pending; browser accounts are disposable fixtures. Unexpectedly killed tests can leave their own schema behind; inspect and target only those schemas. There is no database-wide reset command.
 

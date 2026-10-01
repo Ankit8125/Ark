@@ -72,6 +72,6 @@ pnpm.cmd test:guard
 
 ## What the workspace currently means
 
-The Sessions screen displays your saved organization, selected team, and roles. It states that execution is coming later. [Workspaces](07-workspaces.md) and [Agents](08-agents.md) have versioned configuration forms. Flows, compute, and secrets remain planned navigation entries. Invitations, password recovery, member administration, and real agent execution are also future work. The next bounded increment adds ordered flows with authorized resource references.
+The Sessions screen displays your saved organization, selected team, and roles. It states that execution is coming later. [Workspaces](07-workspaces.md) and [Agents](08-agents.md) have versioned configuration forms. The verified [Flow editor](09-flows.md) adds ordered configuration and pinned references; see [progress](../progress/README.md) for current evidence. Compute and secrets remain planned navigation entries. Invitations, password recovery, member administration, and real agent execution are also future work.
 
 Keep this version on your own computer's loopback address. A hosted installation needs its own HTTPS, secure-cookie, trusted-origin, operational, and access-management work.

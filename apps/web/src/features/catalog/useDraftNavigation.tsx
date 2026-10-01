@@ -4,7 +4,9 @@ import type { DraftStatus } from "./useVersionedEditor";
 import common from "../../App.module.css";
 import styles from "./catalog.module.css";
 
-export function useDraftNavigation(kind: "workspace" | "agent" = "workspace") {
+export function useDraftNavigation(
+  kind: "workspace" | "agent" | "flow" = "workspace",
+) {
   const draftRef = useRef<DraftStatus>({ dirty: false, busy: false });
   const [draftStatus, setDraftStatus] = useState<DraftStatus>({
     dirty: false,

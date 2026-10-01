@@ -1,12 +1,12 @@
 # Codebase and tooling findings
 
-Updated 2026-09-27. [Findings index](README.md)
+Updated 2026-10-01. [Findings index](README.md)
 
 ## F001 - Local identity and catalog foundations
 
 | Location               | Implemented responsibility                                                                                  |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `apps/web`             | React Router setup/login, team shell, Workspace/Agent features, shared catalog recovery, CSS modules        |
+| `apps/web`             | React Router setup/login, team shell, Workspace/Agent/Flow features, shared catalog recovery, CSS modules   |
 | `apps/api`             | Fastify boundary, identity, concrete catalog routes/services, shared versioned persistence, loopback server |
 | `packages/contracts`   | Zod request/response schemas and inferred TypeScript types                                                  |
 | `packages/db`          | PostgreSQL pool, transactions, checksum-verified SQL migrations                                             |
@@ -15,7 +15,7 @@ Updated 2026-09-27. [Findings index](README.md)
 | `tests/integration`    | Real PostgreSQL identity, denial, rollback, concurrency, privilege, and process-restart tests               |
 | `tests/helpers`        | Isolated test schemas and a disposable browser-test API                                                     |
 
-Workspace and Agent configuration editing is implemented. Flows, session execution, runners, and model calls are absent. The UI says so. Login sessions (`auth_sessions`) are not future execution sessions.
+Workspace, Agent, and ordered Flow configuration editing is implemented and verified; see the [Flow acceptance record](../progress/2026-10-01-01-flow-completion.md). Session execution, runners, and model calls remain absent. The UI says so. Login sessions (`auth_sessions`) are not future execution sessions.
 
 ## F002 - The lockfile establishes resolved versions
 

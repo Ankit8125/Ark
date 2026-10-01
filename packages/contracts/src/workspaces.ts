@@ -95,6 +95,9 @@ export const WorkspaceParamsSchema = z.strictObject({
 export const WorkspaceListQuerySchema = z.strictObject({
   cursor: z.uuid().optional(),
 });
+export const WorkspaceVersionParamsSchema = WorkspaceParamsSchema.extend({
+  versionId: z.uuid(),
+});
 export const WorkspaceSummarySchema = z.strictObject({
   id: z.uuid(),
   teamId: z.uuid(),

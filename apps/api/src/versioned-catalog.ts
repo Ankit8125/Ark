@@ -1,10 +1,12 @@
 import { isDeepStrictEqual } from "node:util";
+import { ResourceVersionSchema } from "@ark/contracts";
+import type { ResourceVersion } from "@ark/contracts";
 import { withTransaction } from "@ark/db";
 import type { Pool, PoolClient } from "pg";
 import { ApiFailure } from "./errors.js";
 import type { IdentityService, TeamAccess } from "./identity.js";
 
-type CatalogKind = "workspace" | "agent";
+type CatalogKind = "workspace" | "agent" | "flow";
 interface NamedDefinition {
   name: string;
 }
@@ -47,6 +49,20 @@ interface CatalogRecord extends CatalogSummary {
   createdAt: string;
   definition: unknown;
 }
+interface VersionRow {
+  resource_id: string;
+  team_id: string;
+  version_id: string;
+  revision: number;
+  schema_version: number;
+  created_at: Date;
+  definition: unknown;
+}
+type DefinitionValidator<Definition> = (
+  client: PoolClient,
+  access: TeamAccess,
+  definition: Definition,
+) => Promise<void>;
 
 const summaryColumns = `r.id, r.team_id, r.name, r.revision, r.updated_at,
   v.id AS version_id, v.schema_version`;
@@ -66,24 +82,28 @@ function summary(row: CatalogSummaryRow): CatalogSummary {
   };
 }
 
-// Workspaces and agents share exactly these persistence and authorization
+// Catalog kinds share exactly these persistence and authorization
 // invariants. Their schemas, response envelopes, and routes remain concrete.
 export class VersionedCatalogService<Definition extends NamedDefinition> {
   private readonly pool: Pool;
   private readonly identity: IdentityService;
   private readonly kind: CatalogKind;
   private readonly parseRecord: (value: unknown) => CatalogRecord;
+  private readonly validateDefinition:
+    DefinitionValidator<Definition> | undefined;
 
   constructor(
     pool: Pool,
     identity: IdentityService,
     kind: CatalogKind,
     parseRecord: (value: unknown) => CatalogRecord,
+    validateDefinition?: DefinitionValidator<Definition>,
   ) {
     this.pool = pool;
     this.identity = identity;
     this.kind = kind;
     this.parseRecord = parseRecord;
+    this.validateDefinition = validateDefinition;
   }
 
   private record(row: CatalogRow): CatalogRecord {
@@ -151,6 +171,36 @@ export class VersionedCatalogService<Definition extends NamedDefinition> {
     const row = await this.find(this.pool, access, resourceId);
     if (!row) throw this.notFound();
     return this.record(row);
+  }
+
+  async getVersion(
+    token: string | undefined,
+    teamId: string,
+    resourceId: string,
+    versionId: string,
+  ): Promise<ResourceVersion> {
+    const access = await this.identity.authorizeTeam(token, teamId);
+    const result = await this.pool.query<VersionRow>(
+      `SELECT r.id AS resource_id, r.team_id, v.id AS version_id,
+              v.revision, v.schema_version, v.created_at, v.definition
+       FROM resources r JOIN resource_versions v ON v.resource_id = r.id
+       WHERE r.id = $1 AND r.team_id = $2 AND r.organization_id = $3
+         AND r.kind = $4 AND v.id = $5`,
+      [resourceId, teamId, access.organizationId, this.kind, versionId],
+    );
+    const row = result.rows[0];
+    if (!row) throw this.notFound();
+    // Snapshot metadata must not inherit a later resource name or update time.
+    // Unknown definitions remain intact for read-only clients.
+    return ResourceVersionSchema.parse({
+      resourceId: row.resource_id,
+      teamId: row.team_id,
+      versionId: row.version_id,
+      revision: row.revision,
+      schemaVersion: row.schema_version,
+      createdAt: row.created_at.toISOString(),
+      definition: row.definition,
+    });
   }
 
   private async find(
@@ -255,8 +305,10 @@ export class VersionedCatalogService<Definition extends NamedDefinition> {
               `This ${this.kind} request cannot be reused. Reload and try again.`,
             );
           }
+          await this.validateDefinition?.(client, access, input.definition);
           return { resource: this.record(existing), created: false };
         }
+        await this.validateDefinition?.(client, access, input.definition);
         await this.recordVersion(client, access, input.id, 1, input, "created");
         const row = await this.find(client, access, input.id);
         if (!row) throw new Error("Catalog resource was not created.");
@@ -294,6 +346,7 @@ export class VersionedCatalogService<Definition extends NamedDefinition> {
             `This ${this.kind} has changed. Reload it before saving again.`,
           );
         }
+        await this.validateDefinition?.(client, access, input.definition);
         const revision = existing.revision + 1;
         await client.query(
           `UPDATE resources SET name = $1, revision = $2, updated_at = now()

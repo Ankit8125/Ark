@@ -10,7 +10,7 @@ The first V0.2 slice stores team-owned workspace configuration only. `packages/c
 
 ## Storage and write consistency
 
-Migration `002_workspaces.sql` introduces `resources` and `resource_versions`. The subsequent `003_agents.sql` expands the original workspace-only kind constraint to include Agents; further kinds require new migrations. A composite team/organization foreign key prevents mismatched ownership. Names are unique per team and kind, ignoring case. Versions have independent IDs, positive schema versions, and a unique resource/revision pair.
+Migration `002_workspaces.sql` introduces `resources` and `resource_versions`. Subsequent migrations `003_agents.sql` and `004_flows.sql` expand the original workspace-only kind constraint to include Agents and Flows. A composite team/organization foreign key prevents mismatched ownership. Names are unique per team and kind, ignoring case. Versions have independent IDs, positive schema versions, and a unique resource/revision pair. The [Flow increment](flows.md) adds authorized immutable Workspace reads; an existing pin remains unchanged when the Workspace's current version advances.
 
 The deferred foreign key from a resource's current revision to its snapshot prevents a committed dangling revision. Every write atomically stores the current pointer, a complete snapshot, and an audit event. Audits contain the workspace ID and revision, not URLs, actions, or the full definition. Audit failure rolls back the whole write.
 

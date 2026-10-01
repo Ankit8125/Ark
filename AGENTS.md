@@ -12,7 +12,7 @@ Code, migrations, and reproducible check results establish implemented behavior.
 ## Scope and communication
 
 - Explain the purpose and data flow of each bounded change in plain language.
-- The current checkpoint is local V0.1 identity plus V0.2 Workspace and Agent catalog slices. Both support create/read/edit and immutable versions. Ordered flows, session execution, invitations, and administration UI are not implemented. Agent capabilities and model preferences are inert configuration, not effective grants or model calls.
+- The current verified checkpoint is local V0.1 identity plus V0.2 Workspace, Agent, and ordered Flow catalogs. All support create/read/edit with immutable revisions; Flows pin Workspace/Agent versions. V0.2 remains incomplete: history/restore is the next bounded feature, with archive/templates separate. Read the latest progress record before extending this work. Session execution, invitations, and administration UI are not implemented. Agent capabilities and model preferences are inert configuration, not effective grants or model calls.
 - Follow shared schema -> migration -> backend -> frontend within a feature increment. Do not replace the agreed architecture or implement later releases merely because their libraries are available.
 - Before calling a milestone complete, meet its acceptance criteria and record actual checks, skipped checks, and limitations.
 - Leave paid model calls, cloud provisioning, deployment, and unrelated external actions outside ordinary local-development work unless requested.

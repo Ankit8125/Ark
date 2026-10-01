@@ -4,6 +4,7 @@ import type {
   AgentDefinition,
   AgentListResponse,
   CreateAgentRequest,
+  ResourceVersion,
   UpdateAgentRequest,
 } from "@ark/contracts";
 import type { Pool } from "pg";
@@ -40,6 +41,15 @@ export class AgentService {
     agentId: string,
   ): Promise<Agent> {
     return this.catalog.get(token, teamId, agentId);
+  }
+
+  async getVersion(
+    token: string | undefined,
+    teamId: string,
+    agentId: string,
+    versionId: string,
+  ): Promise<ResourceVersion> {
+    return this.catalog.getVersion(token, teamId, agentId, versionId);
   }
 
   async create(

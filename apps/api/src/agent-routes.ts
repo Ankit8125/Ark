@@ -1,6 +1,7 @@
 import {
   AgentListQuerySchema,
   AgentParamsSchema,
+  AgentVersionParamsSchema,
   CreateAgentRequestSchema,
   UpdateAgentRequestSchema,
 } from "@ark/contracts";
@@ -28,6 +29,20 @@ export function registerAgentRoutes(
     const { teamId, agentId } = parseRequest(AgentParamsSchema, request.params);
     return {
       agent: await agents.get(request.cookies.ark_session, teamId, agentId),
+    };
+  });
+  app.get(`${detailPath}/versions/:versionId`, async (request) => {
+    const { teamId, agentId, versionId } = parseRequest(
+      AgentVersionParamsSchema,
+      request.params,
+    );
+    return {
+      version: await agents.getVersion(
+        request.cookies.ark_session,
+        teamId,
+        agentId,
+        versionId,
+      ),
     };
   });
   app.post(collectionPath, mutationOptions, async (request, reply) => {

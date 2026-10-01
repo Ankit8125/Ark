@@ -39,6 +39,6 @@ The browser shares versioned-editor recovery and dirty-navigation protection bet
 
 ## Verification and remaining work
 
-The [dated implementation record](../progress/2026-09-27-02-agents.md) records actual automated checks, browser evidence, and limits. Workspaces and identity remain regression coverage. Ordered flows and authorized version references are next; history/restore, archive/delete, templates, sharing/grants, and execution remain unimplemented. V0.2 is not complete from two catalogs alone.
+The [dated implementation record](../progress/2026-09-27-02-agents.md) records the original automated checks, browser evidence, and limits. Workspaces and identity remain regression coverage. The verified [Flow increment](flows.md) adds separately authorized immutable-version reads and same-team pinned references. History/restore, archive/delete, templates, sharing/grants, and execution remain unimplemented. V0.2 is not complete from catalog editing alone.
 
 Official references checked for this increment: [PostgreSQL 17 constraint changes](https://www.postgresql.org/docs/17/sql-altertable.html), [Fastify route body limits](https://fastify.dev/docs/latest/Reference/Routes/), and [Zod strict objects and refinements](https://zod.dev/api). Existing React/Vite dependencies and their lockfile are unchanged.

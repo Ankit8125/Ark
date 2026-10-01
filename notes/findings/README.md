@@ -12,10 +12,11 @@ Keep facts and decisions in focused files; distinguish verified behavior from in
 | [Architecture review](architecture-review.md)     | Module boundaries, render recovery, rollback cleanup, local URL validation     |
 | [Workspace catalog](workspaces.md)                | Fields, ownership, immutable snapshots, HTTP contracts, concurrency, and scope |
 | [Agent catalog](agents.md)                        | Stub configuration, kind isolation, shared versioning, text bounds, and scope  |
+| [Ordered Flows](flows.md)                         | Stage/port contract, pinned dependency boundaries, and acceptance limits       |
 
 ## Next decisions
 
-1. Define the next bounded V0.2 ordered-flow slice and authorized Workspace/Agent version references.
+1. Design history/restore with fresh authorization, expected-revision checks, and dependency validation. Flow acceptance is recorded in the [completion entry](../progress/2026-10-01-01-flow-completion.md). Keep archive/templates separate.
 2. Decide when to add automated browser regression tests; current browser evidence is a CLI walkthrough.
 3. Design invitations, administration, and password recovery before a team-usable release.
 4. Select recoverable OS-backed secret storage before real provider credentials.

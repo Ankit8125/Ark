@@ -33,6 +33,7 @@ import { api, ApiRequestError, errorMessage } from "./api";
 import styles from "./App.module.css";
 import { WorkspaceRoutes } from "./features/workspaces/WorkspaceRoutes";
 import { AgentRoutes } from "./features/agents/AgentRoutes";
+import { FlowRoutes } from "./features/flows/FlowRoutes";
 import { useDraftNavigation } from "./features/catalog/useDraftNavigation";
 
 type Props = {
@@ -62,9 +63,11 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
   const navigate = useNavigate();
   const workspacesPage = location.pathname.startsWith("/workspaces");
   const agentsPage = location.pathname.startsWith("/agents");
-  const catalogPage = workspacesPage || agentsPage;
+  const flowsPage = location.pathname.startsWith("/flows");
+  const catalogPage = workspacesPage || agentsPage || flowsPage;
+  const catalogKind = flowsPage ? "flow" : agentsPage ? "agent" : "workspace";
   const { onDraftStatus, confirmLeave, prompt, draftStatus } =
-    useDraftNavigation(agentsPage ? "agent" : "workspace");
+    useDraftNavigation(catalogKind);
   const [choice, setChoice] = useState(() => rememberedTeam(me));
   const selected = me.teams.find((team) => team.id === choice) ?? me.teams[0];
   const [teamState, setTeamState] = useState<TeamState>({ kind: "loading" });
@@ -246,6 +249,7 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
               setTeamState({ kind: "loading" });
               if (workspacesPage) void navigate("/workspaces");
               if (agentsPage) void navigate("/agents");
+              if (flowsPage) void navigate("/flows");
             }}
             disabled={!me.teams.length || draftStatus.busy}
           >
@@ -300,7 +304,18 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
               <Bot size={17} aria-hidden="true" />
               <span>Agents</span>
             </NavLink>
-            {future("Flows", GitBranch)}
+            <NavLink
+              to="/flows"
+              className={({ isActive }) =>
+                isActive ? styles.activeNav : styles.navLink
+              }
+              onClick={() => {
+                if (navigationOpen) closeNavigation();
+              }}
+            >
+              <GitBranch size={17} aria-hidden="true" />
+              <span>Flows</span>
+            </NavLink>
             {future("Tools & MCP", Network)}
           </div>
           <div className={styles.navGroup}>
@@ -351,7 +366,9 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
                 ? "Workspaces"
                 : agentsPage
                   ? "Agents"
-                  : "Sessions"}
+                  : flowsPage
+                    ? "Flows"
+                    : "Sessions"}
             </strong>
           </div>
           <details
@@ -401,8 +418,8 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
               <div>
                 <p>
                   {teamState.refreshError
-                    ? `${teamState.refreshError} Your open ${agentsPage ? "agent" : "workspace"} and draft have been kept. Saving is paused until team access is checked.`
-                    : `Checking updated team access. Your open ${agentsPage ? "agent" : "workspace"} and draft have been kept; saving is temporarily paused.`}
+                    ? `${teamState.refreshError} Your open ${catalogKind} and draft have been kept. Saving is paused until team access is checked.`
+                    : `Checking updated team access. Your open ${catalogKind} and draft have been kept; saving is temporarily paused.`}
                 </p>
                 {teamState.refreshError && (
                   <button
@@ -485,6 +502,16 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
             </section>
           ) : (
             <Routes>
+              <Route
+                path="/flows/*"
+                element={
+                  <FlowRoutes
+                    team={team}
+                    onExpired={onExpired}
+                    onDraftStatus={onDraftStatus}
+                  />
+                }
+              />
               <Route
                 path="/agents/*"
                 element={

@@ -19,14 +19,12 @@ export type EditorProps = {
   onDraftStatus: (status: DraftStatus) => void;
 };
 export type EditorConfig<Definition, RecordType extends CatalogRecord> = {
-  kind: "workspace" | "agent";
-  plural: "workspaces" | "agents";
+  kind: "workspace" | "agent" | "flow";
+  plural: "workspaces" | "agents" | "flows";
   createDescription: string;
   emptyDefinition: () => Definition;
   schema: {
-    safeParse: (
-      value: unknown,
-    ) =>
+    safeParse: (value: unknown) =>
       | { success: true; data: Definition }
       | {
           success: false;
@@ -67,7 +65,7 @@ export function useVersionedEditor<
   const [record, setRecord] = useState<RecordType | null>(null);
   const [draft, setDraft] = useState(config.emptyDefinition);
   const [savedDefinition, setSavedDefinition] = useState(() =>
-    JSON.stringify(config.emptyDefinition()),
+    JSON.stringify(draft),
   );
   const [loading, setLoading] = useState(Boolean(resourceId));
   const [saving, setSaving] = useState(false);
@@ -144,16 +142,21 @@ export function useVersionedEditor<
     return () => controller.abort();
   }, [team.id, resourceId, attempt, onExpired, config]);
 
-  function focusError(fields: Record<string, string[]>) {
-    requestAnimationFrame(() => {
+  useEffect(() => {
+    if (!message || busy) return;
+    const frame = requestAnimationFrame(() => {
       if (!mounted.current) return;
-      const field = formRef.current?.elements.namedItem(
-        Object.keys(fields)[0] ?? "",
-      );
+      const path = Object.keys(errors)[0] ?? "";
+      const field =
+        formRef.current?.elements.namedItem(path) ??
+        formRef.current?.elements.namedItem(
+          path.replace(/\.(resourceId|versionId|port|stageId)$/, ""),
+        );
       if (field instanceof HTMLElement) field.focus();
       else errorRef.current?.focus();
     });
-  }
+    return () => cancelAnimationFrame(frame);
+  }, [message, errors, busy]);
 
   function changeDraft(next: Definition) {
     setDraft(next);
@@ -174,7 +177,6 @@ export function useVersionedEditor<
         (fields[issue.path.map(String).join(".")] ??= []).push(issue.message);
       setErrors(fields);
       setMessage("Check the highlighted fields.");
-      focusError(fields);
       return;
     }
     const controller = new AbortController();
@@ -232,7 +234,6 @@ export function useVersionedEditor<
       }
       setErrors(fields);
       setMessage(errorMessage(error));
-      focusError(fields);
     } finally {
       saveInFlight.current = false;
       if (!controller.signal.aborted && mounted.current) setSaving(false);
@@ -278,7 +279,6 @@ export function useVersionedEditor<
       if (error instanceof ApiRequestError && error.status === 401) onExpired();
       else {
         setMessage(errorMessage(error));
-        focusError({});
       }
     } finally {
       if (!controller.signal.aborted && mounted.current) setLoading(false);

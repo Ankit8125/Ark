@@ -36,17 +36,32 @@ it("restores setup and authentication after a real API process restart", async (
     );
   let child: ReturnType<typeof start> | undefined;
   async function ready() {
-    for (let attempt = 0; attempt < 100; attempt++) {
+    // Cold process startup can exceed five seconds on Windows. Keep a real
+    // deadline and bounded requests rather than inferring time from poll count.
+    const deadline = performance.now() + 15_000;
+    let lastStatus = "unreachable";
+    while (performance.now() < deadline) {
       if (child?.exitCode !== null)
         throw new Error("Test API exited before becoming ready.");
       try {
-        if ((await fetch(`${origin}/api/health/ready`)).ok) return;
+        const response = await fetch(`${origin}/api/health/ready`, {
+          signal: AbortSignal.timeout(
+            Math.max(
+              1,
+              Math.min(1000, Math.ceil(deadline - performance.now())),
+            ),
+          ),
+        });
+        lastStatus = `HTTP ${response.status}`;
+        if (response.ok) return;
       } catch {
-        /* Wait for listener. */
+        lastStatus = "unreachable";
       }
-      await delay(50);
+      await delay(Math.max(0, Math.min(50, deadline - performance.now())));
     }
-    throw new Error("Test API readiness timed out.");
+    throw new Error(
+      `Test API readiness timed out after 15 seconds (last status: ${lastStatus}).`,
+    );
   }
   async function stop() {
     if (!child || child.exitCode !== null) return;
@@ -91,4 +106,4 @@ it("restores setup and authentication after a real API process restart", async (
     await stop();
     await fixture.close();
   }
-});
+}, 45_000);

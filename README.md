@@ -2,7 +2,7 @@
 
 An independent, self-hosted development platform being built incrementally: a task becomes a plan, a verified change, a human-approved publication, and a draft pull request. The intended product supports multiple teams with backend-enforced permissions.
 
-**Current status: V0.1 identity plus Workspace and Agent catalogs implemented.** Create the first organization, owner, and team through local setup; sign in and save team-owned configuration with immutable versions and stale-edit protection. A Fastify API validates inputs and checks authentication, explicit team membership, and write roles against PostgreSQL. Ordered flows are next; session execution, runner enrollment, model calls, and task-to-PR workflows belong to later increments. V0.2 is not complete yet.
+**Verified checkpoint: V0.1 identity plus Workspace, Agent, and ordered Flow catalogs.** Create the first organization, owner, and team through local setup; sign in and save team-owned configuration with immutable versions and stale-edit protection. Flows connect typed stages and pin exact Workspace/Agent versions. A Fastify API validates inputs and checks authentication, explicit team membership, write roles, and dependencies against PostgreSQL. See the [Flow acceptance record](notes/progress/2026-10-01-01-flow-completion.md) for automated and browser evidence. Session execution, runner enrollment, model calls, and task-to-PR workflows belong to later increments. V0.2 is not complete yet; history/restore comes next.
 
 ## Start reading
 

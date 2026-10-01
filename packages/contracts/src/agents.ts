@@ -53,6 +53,9 @@ export const AgentParamsSchema = z.strictObject({
 export const AgentListQuerySchema = z.strictObject({
   cursor: z.uuid().optional(),
 });
+export const AgentVersionParamsSchema = AgentParamsSchema.extend({
+  versionId: z.uuid(),
+});
 export const AgentSummarySchema = z.strictObject({
   id: z.uuid(),
   teamId: z.uuid(),

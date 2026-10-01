@@ -1,8 +1,8 @@
 # How the project is organized
 
-Updated 2026-09-27. [Learning index](README.md)
+Updated 2026-10-01. [Learning index](README.md)
 
-Ark is a TypeScript modular monolith: one application with explicit boundaries. This is the recommended structure for V0.1 identity and the V0.2 Workspace/Agent slices. The tree shows relevant implemented files, with repeated configuration and assets omitted.
+Ark is a TypeScript modular monolith: one application with explicit boundaries. This is the recommended structure for V0.1 identity and the V0.2 Workspace/Agent/Flow slices. The tree shows relevant implemented files, with repeated configuration and assets omitted.
 
 ```text
 ark/
@@ -25,6 +25,18 @@ ark/
 |   |   |   |   |-- AgentEditor.tsx     # Explicit instructions/preferences fields
 |   |   |   |   |-- api.ts              # Validated Agent HTTP adapter
 |   |   |   |   `-- AgentEditor.test.tsx # Agent DOM regressions
+|   |   |   |-- flows/
+|   |   |   |   |-- FlowRoutes.tsx     # Flow route composition
+|   |   |   |   |-- FlowList.tsx       # Flow list adapter
+|   |   |   |   |-- FlowEditor.tsx     # Details and section composition
+|   |   |   |   |-- FlowStages.tsx     # Ordered stages with stable identities
+|   |   |   |   |-- FlowPorts.tsx      # Typed port/binding controls
+|   |   |   |   |-- ResourceVersionPicker.tsx # Explicit pins and historical reads
+|   |   |   |   |-- useDependencyCatalog.ts # Abortable paginated choices
+|   |   |   |   |-- flow-fields.ts     # Field/source helpers
+|   |   |   |   |-- api.ts             # Flow and pinned-version HTTP adapter
+|   |   |   |   |-- flows.module.css
+|   |   |   |   `-- FlowEditor.test.tsx # Flow DOM regressions
 |   |   |   `-- catalog/
 |   |   |       |-- useVersionedEditor.ts # Shared save/load/conflict lifecycle
 |   |   |       |-- CatalogEditor.tsx  # Shared form chrome and field component
@@ -46,6 +58,9 @@ ark/
 |       |-- workspaces.ts           # Concrete Workspace service/response contract
 |       |-- agent-routes.ts         # Agent HTTP adaptation
 |       |-- agents.ts               # Concrete Agent service/response contract
+|       |-- flow-routes.ts          # Flow HTTP adaptation
+|       |-- flows.ts                # Concrete Flow service/response contract
+|       |-- flow-dependencies.ts    # Locked, scoped immutable version checks
 |       |-- versioned-catalog.ts    # Shared authorized transactions and SQL
 |       |-- credentials.ts          # Password and session-token operations
 |       |-- errors.ts               # Validation and safe API failures
@@ -55,13 +70,16 @@ ark/
 |   |   |-- index.ts                # Identity schemas and public exports
 |   |   |-- workspaces.ts           # Workspace schemas and inferred types
 |   |   |-- agents.ts               # Agent schemas and inferred types
+|   |   |-- flows.ts                # Typed ordered graph and reference validation
+|   |   |-- catalog-versions.ts     # Paired pins and immutable version DTO
 |   |   `-- catalog-text.ts         # Shared PostgreSQL-safe text validator
 |   `-- db/
 |       |-- src/index.ts            # Pool, transactions, migration runner
 |       `-- migrations/
 |           |-- 001_identity.sql
 |           |-- 002_workspaces.sql
-|           `-- 003_agents.sql
+|           |-- 003_agents.sql
+|           `-- 004_flows.sql
 |-- scripts/
 |   |-- lib/local-database-url.mjs   # Local maintenance/test URL validation
 |   |-- lib/local-database-url.d.mts # Types for the JavaScript helper
@@ -96,11 +114,11 @@ For example, a URL that names loopback but adds a remote `host` query parameter 
 
 ## How this grows
 
-V0.2 has focused `features/workspaces/` and `features/agents/` folders, concrete service/route modules in the API, and domain-specific contracts. Shared catalog behavior lives beside these features. Introduce deeper backend folders when additional responsibilities justify them. Keep public contract exports and add new numbered SQL migrations; never edit applied migrations.
+V0.2 has focused `features/workspaces/`, `features/agents/`, and `features/flows/` folders, concrete service/route modules in the API, and domain-specific contracts. Shared catalog behavior lives beside these features. Introduce deeper backend folders when additional responsibilities justify them. Keep public contract exports and add new numbered SQL migrations; never edit applied migrations.
 
-Both catalog saves validate the full definition, reauthorize the team in a transaction, lock/check its revision, validate the resulting public response, and commit a new snapshot plus audit event. Kind is checked alongside team and organization. React Router's data router supplies dirty-form navigation blocking without replacing Vite or React. The [Workspace](07-workspaces.md) and [Agent](08-agents.md) guides explain each definition and its recovery behavior.
+Catalog saves validate the full definition, reauthorize the team in a transaction, lock/check its revision, validate the resulting public response, and commit a new snapshot plus audit event. Kind is checked alongside team and organization. Flow saves add dependency checks inside that transaction through one narrow validator callback. React Router's data router supplies dirty-form navigation blocking without replacing Vite or React. The [Workspace](07-workspaces.md), [Agent](08-agents.md), and [Flow](09-flows.md) guides explain each definition and its recovery behavior.
 
-The second catalog exposes real duplication, so transaction handling and browser recovery now have shared implementations. Field layouts, contracts, and endpoint adapters remain feature-owned. A single place for conflict/retry/authorization mechanics reduces the risk that one feature receives a fix while another misses it. The trade-off is that shared changes require both features' regression tests. There is no dynamic form schema or speculative plugin system.
+The second catalog exposed real duplication, so transaction handling and browser recovery have shared implementations. The third adds typed dependency resolution without moving Flow rules into Workspace or Agent modules. Field layouts, contracts, and endpoint adapters remain feature-owned. A single place for conflict/retry/authorization mechanics reduces the risk that one feature receives a fix while another misses it. The trade-off is that shared changes require all three features' regression tests. There is no dynamic form schema or speculative plugin system.
 
 Extract a repository abstraction when persistence needs a real alternative or repeated query boundaries become difficult to test. Until then, the identity service's parameterized SQL and injected pool keep transaction ownership visible. Separate engine/runner entrypoints belong to their planned milestones, not this review.
 
@@ -120,7 +138,7 @@ pnpm.cmd test:integration
 pnpm.cmd test:guard
 ```
 
-`test:unit` includes React DOM tests in jsdom as well as contracts and infrastructure checks. jsdom is development-only and does not replace a real browser walkthrough. Integration tests need the already-provisioned local `ark_test` database and Docker running. Run `pnpm.cmd db:prepare` after pulling a new migration; the Agent increment adds `003_agents.sql`.
+`test:unit` includes React DOM tests in jsdom as well as contracts and infrastructure checks. jsdom is development-only and does not replace a real browser walkthrough. Integration tests need the already-provisioned local `ark_test` database and Docker running. Run `pnpm.cmd db:prepare` after pulling a new migration; the Flow increment adds `004_flows.sql`.
 
 An error boundary handles rendering failures, not every asynchronous callback, failed event handler, or broken application download. Expected request failures continue through the API/form error paths. Logging intentionally trades detailed stack traces for privacy; adding richer diagnostics needs a reviewed, sanitized schema. No remote monitoring service was added. A sound V0.1 foundation is not a claim of production readiness or perfection.
 

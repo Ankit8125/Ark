@@ -207,7 +207,7 @@ export function CatalogField({
   rows = 3,
   code = false,
 }: {
-  kind: "workspace" | "agent";
+  kind: "workspace" | "agent" | "flow";
   name: string;
   label: string;
   value: string;

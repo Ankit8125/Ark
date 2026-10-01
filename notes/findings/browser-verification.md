@@ -58,3 +58,15 @@ The same disposable-database approach verified workspace creation, all-field rel
 ## Agent increment, 2026-09-27
 
 The [Agent implementation record](../progress/2026-09-27-02-agents.md) records complete field reload checks, a two-tab revision conflict, offline-save recovery, Agent-specific navigation protection, and desktop/mobile inspection. The refactored Workspace form also preserved all 11 controls after save/reload. Both resources could share a display name without mixing their catalogs. The browser and QA servers were stopped, and the identified test schema's removal was verified. Role/schema cases remain separate DOM/API evidence; this walkthrough is not a full end-to-end regression suite.
+
+## Flow increment, September 28–30: incomplete walkthrough
+
+The disposable fixture reached setup, Workspace/Agent creation, Flow navigation, and the initial ordered form. Flow save/reload, pin retention/upgrades, stale conflicts, mobile inspection, and final console/cleanup confirmation remain pending. The approval service's account usage limit prevented the reload/resume commands from executing. See the [verification checkpoint](../progress/2026-09-30-01-flow-verification.md) for precise evidence and recovery instructions. Do not substitute the passing DOM/API checks for these missing browser checks.
+
+## Flow acceptance completed, 2026-10-01
+
+The earlier interruption is resolved. A fresh disposable fixture verified all 22 form values across create/full reload, a two-stage text/JSON recipe, invalid reorder rejection with retained references, historical Agent pins after a dependency edit, and an explicit upgrade of one stage without changing the other. Two-tab conflicts, load-latest confirmation, offline-save recovery, and dirty navigation stay/discard paths also passed. Full desktop and 390px mobile captures were visually inspected; neither viewport overflowed horizontally. Console history contained only the deliberate 409 conflict and offline network errors, with no unexpected application errors or warnings.
+
+The abandoned earlier schema was identified and removed separately. The fresh fixture cleaned itself up on shutdown; its absence and closed QA ports were independently verified. The development database remained empty with four migrations. See the [completion record](../progress/2026-10-01-01-flow-completion.md) for the exact checks and walkthrough synchronization details. These are interactive acceptance results, not a browser regression suite or full accessibility audit.
+
+On Windows, avoid rebuilding shared packages while a browser draft is open: it can mix stale Vite modules during hot reload. After source/build changes, reload a stable module graph before accepting browser results. Wait for `All changes saved` after loading a record, but `Saved revision N.` after an update; the two statuses describe different events.

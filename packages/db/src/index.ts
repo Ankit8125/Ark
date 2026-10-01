@@ -3,8 +3,13 @@ import { readFile } from "node:fs/promises";
 import pg from "pg";
 import type { Pool, PoolClient } from "pg";
 
-export const expectedMigrationVersion = "003_agents";
-const migrations = ["001_identity", "002_workspaces", expectedMigrationVersion];
+export const expectedMigrationVersion = "004_flows";
+const migrations = [
+  "001_identity",
+  "002_workspaces",
+  "003_agents",
+  expectedMigrationVersion,
+];
 
 export function createPool(connectionString: string): Pool {
   return new pg.Pool({
