@@ -2,9 +2,14 @@ import {
   CreateFlowRequestSchema,
   FlowListQuerySchema,
   FlowParamsSchema,
+  FlowVersionParamsSchema,
   UpdateFlowRequestSchema,
 } from "@ark/contracts";
 import type { FastifyInstance } from "fastify";
+import {
+  ResourceVersionListQuerySchema,
+  RestoreResourceRequestSchema,
+} from "@ark/contracts";
 import { z } from "zod";
 import { parseRequest } from "./errors.js";
 import type { FlowService } from "./flows.js";
@@ -27,6 +32,45 @@ export function registerFlowRoutes(
     const { teamId, flowId } = parseRequest(FlowParamsSchema, request.params);
     return {
       flow: await flows.get(request.cookies.ark_session, teamId, flowId),
+    };
+  });
+  app.get(`${detailPath}/versions/:versionId`, async (request) => {
+    const { teamId, flowId, versionId } = parseRequest(
+      FlowVersionParamsSchema,
+      request.params,
+    );
+    return {
+      version: await flows.getVersion(
+        request.cookies.ark_session,
+        teamId,
+        flowId,
+        versionId,
+      ),
+    };
+  });
+  app.get(`${detailPath}/versions`, async (request) => {
+    const { teamId, flowId } = parseRequest(FlowParamsSchema, request.params);
+    const { cursor } = parseRequest(
+      ResourceVersionListQuerySchema,
+      request.query,
+    );
+    return flows.listVersions(
+      request.cookies.ark_session,
+      teamId,
+      flowId,
+      cursor,
+    );
+  });
+  app.post(`${detailPath}/restore`, { bodyLimit: 1024 }, async (request) => {
+    const { teamId, flowId } = parseRequest(FlowParamsSchema, request.params);
+    const input = parseRequest(RestoreResourceRequestSchema, request.body);
+    return {
+      flow: await flows.restore(
+        request.cookies.ark_session,
+        teamId,
+        flowId,
+        input,
+      ),
     };
   });
   app.post(collectionPath, mutationOptions, async (request, reply) => {

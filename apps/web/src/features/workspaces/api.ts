@@ -5,6 +5,7 @@ import {
   type UpdateWorkspaceRequest,
 } from "@ark/contracts";
 import { requestJson } from "../../api";
+import { catalogHistoryApi } from "../catalog/history-api";
 
 function collection(teamId: string) {
   return `/api/teams/${encodeURIComponent(teamId)}/workspaces`;
@@ -22,6 +23,7 @@ function workspaceResponse(teamId: string, id: string) {
 }
 
 export const workspaceApi = {
+  ...catalogHistoryApi("workspaces", workspaceResponse),
   list: (teamId: string, cursor?: string, signal?: AbortSignal) =>
     requestJson(
       `${collection(teamId)}${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,

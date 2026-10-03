@@ -19,7 +19,37 @@ export const ResourceVersionSchema = z.strictObject({
 export const ResourceVersionResponseSchema = z.strictObject({
   version: ResourceVersionSchema,
 });
+export const ResourceVersionSummarySchema = ResourceVersionSchema.omit({
+  definition: true,
+});
+export const ResourceVersionListResponseSchema = z.strictObject({
+  versions: z.array(ResourceVersionSummarySchema).max(50),
+  nextCursor: z.number().int().min(1).max(2_147_483_647).nullable(),
+});
+export const ResourceVersionListQuerySchema = z.strictObject({
+  cursor: z
+    .string()
+    .regex(/^[1-9]\d*$/)
+    .transform(Number)
+    .pipe(z.number().int().min(1).max(2_147_483_647))
+    .optional(),
+});
+// The server copies the selected snapshot. Clients cannot supply replacement
+// fields or select a new current revision during a restore.
+export const RestoreResourceRequestSchema = z.strictObject({
+  versionId: z.uuid().toLowerCase(),
+  revision: z.number().int().min(1).max(2_147_483_646),
+});
 export type ResourceVersionReference = z.infer<
   typeof ResourceVersionReferenceSchema
 >;
 export type ResourceVersion = z.infer<typeof ResourceVersionSchema>;
+export type ResourceVersionSummary = z.infer<
+  typeof ResourceVersionSummarySchema
+>;
+export type ResourceVersionListResponse = z.infer<
+  typeof ResourceVersionListResponseSchema
+>;
+export type RestoreResourceRequest = z.infer<
+  typeof RestoreResourceRequestSchema
+>;

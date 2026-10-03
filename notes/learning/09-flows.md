@@ -44,6 +44,8 @@ Stages have stable identities, so moving one does not rename its references. How
 
 All active team members can read. Admins and developers can save. Failed requests and revision conflicts retain the draft, and unknown stored schemas remain read-only. The [Workspace guide](07-workspaces.md) explains the shared revision/conflict model; the [Agent guide](08-agents.md) explains why no API key is needed for catalog configuration.
 
+[Catalog history](10-catalog-history.md) lets you inspect an earlier Flow and restore it as a new revision. Restore keeps that snapshot's exact dependency pins and checks their current availability before saving.
+
 After pulling this increment, apply its new migration explicitly and start both services:
 
 ```powershell

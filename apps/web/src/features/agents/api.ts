@@ -5,6 +5,7 @@ import {
   type UpdateAgentRequest,
 } from "@ark/contracts";
 import { requestJson } from "../../api";
+import { catalogHistoryApi } from "../catalog/history-api";
 
 function collection(teamId: string) {
   return `/api/teams/${encodeURIComponent(teamId)}/agents`;
@@ -20,6 +21,7 @@ function agentResponse(teamId: string, id: string) {
   };
 }
 export const agentApi = {
+  ...catalogHistoryApi("agents", agentResponse),
   list: (teamId: string, cursor?: string, signal?: AbortSignal) =>
     requestJson(
       `${collection(teamId)}${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,

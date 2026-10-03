@@ -135,6 +135,9 @@ export const FlowParamsSchema = z.strictObject({
   teamId: z.uuid(),
   flowId: z.uuid(),
 });
+export const FlowVersionParamsSchema = FlowParamsSchema.extend({
+  versionId: z.uuid(),
+});
 export const FlowListQuerySchema = z.strictObject({
   cursor: z.uuid().optional(),
 });

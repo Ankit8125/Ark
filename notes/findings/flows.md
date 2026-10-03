@@ -30,7 +30,7 @@ The validator checks that every referenced resource was actually returned by the
 
 Flow mutation bodies allow 128 KiB. The maximal escaped valid fixture exercises 20 stages and eight ports per list, including references to prior-stage outputs; it exceeds 64 KiB and fits the route limit. API field errors retain complete dotted paths for the dynamic controls. No request definitions are written to audit metadata or unexpected-error logs.
 
-The browser loads current catalog choices in pages of 50 and separately reads selected pins, retaining historical selections rather than silently replacing them. A full history selector is deferred. Each editor performs at most one Workspace and 20 stage-version reads for its selected references; identical Agent selections are not currently deduplicated across stage components. Dirty initialization uses the same generated stage identities for the draft and its baseline. Validation focus waits until busy controls are enabled again.
+The browser loads current catalog choices in pages of 50 and separately reads selected pins, retaining historical selections rather than silently replacing them. A full dependency history selector is deferred. Each editor performs at most one Workspace and 20 stage-version reads for its selected references; identical Agent selections are not currently deduplicated across stage components. Dirty initialization uses the same generated stage identities for the draft and its baseline. Validation focus waits until busy controls are enabled again.
 
 Defensive cross-organization coverage relaxes the organization singleton constraint only in a generated test schema. Production remains single-organization; those fixtures do not implement or claim multi-organization support.
 
@@ -38,4 +38,4 @@ Defensive cross-organization coverage relaxes the organization singleton constra
 
 Official references checked during design: [Zod refinements](https://zod.dev/api#superrefine), [PostgreSQL 17 row locks](https://www.postgresql.org/docs/17/explicit-locking.html), and [node-postgres transactions](https://node-postgres.com/features/transactions). No package or lockfile upgrade is required.
 
-History listing/restore, archive/delete, templates, cross-team sharing, runner enrollment, and execution remain separate increments. Current-version selectors plus retained historical pins do not constitute a complete history UI.
+[History listing/restore](catalog-history.md) now extend all three catalogs, including complete historical Flow reads and fresh dependency validation during restore. The dependency picker still offers current catalog choices and retained historical pins; choosing any older dependency directly remains a separate UI decision. Archive/delete, templates, cross-team sharing, runner enrollment, and execution remain separate increments.

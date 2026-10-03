@@ -35,7 +35,7 @@ List order is UUID keyset order, not alphabetical or chronological. Reload to se
 
 Workspace mutation bodies are limited to 64 KiB; identity routes retain the global 16 KiB limit. Exact Host checks remain global. Origin and JSON guards cover POST, PUT, PATCH, and DELETE. Cookies remain HttpOnly and SameSite=Strict.
 
-Reads retain unknown stored definitions. Unsupported stored schema versions are read-only and updates receive `409 UNSUPPORTED_SCHEMA_VERSION`. The UI also treats invalid known-version definitions as read-only. Future schema migration and history/restore UI remain unimplemented.
+Reads retain unknown stored definitions. Unsupported stored schema versions are read-only and updates receive `409 UNSUPPORTED_SCHEMA_VERSION`. The UI also treats invalid known-version definitions as read-only. [History and restore](catalog-history.md) now provide complete snapshot reads and new immutable restore revisions. Schema migration remains unimplemented.
 
 ## References and limits
 

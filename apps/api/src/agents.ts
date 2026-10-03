@@ -1,4 +1,8 @@
-import { AgentListResponseSchema, AgentSchema } from "@ark/contracts";
+import {
+  AgentDefinitionSchema,
+  AgentListResponseSchema,
+  AgentSchema,
+} from "@ark/contracts";
 import type {
   Agent,
   AgentDefinition,
@@ -8,6 +12,10 @@ import type {
   UpdateAgentRequest,
 } from "@ark/contracts";
 import type { Pool } from "pg";
+import type {
+  RestoreResourceRequest,
+  ResourceVersionListResponse,
+} from "@ark/contracts";
 import type { IdentityService } from "./identity.js";
 import { VersionedCatalogService } from "./versioned-catalog.js";
 
@@ -20,6 +28,7 @@ export class AgentService {
       identity,
       "agent",
       AgentSchema.parse,
+      AgentDefinitionSchema.parse,
     );
   }
 
@@ -50,6 +59,24 @@ export class AgentService {
     versionId: string,
   ): Promise<ResourceVersion> {
     return this.catalog.getVersion(token, teamId, agentId, versionId);
+  }
+
+  async listVersions(
+    token: string | undefined,
+    teamId: string,
+    resourceId: string,
+    cursor?: number,
+  ): Promise<ResourceVersionListResponse> {
+    return this.catalog.listVersions(token, teamId, resourceId, cursor);
+  }
+
+  async restore(
+    token: string | undefined,
+    teamId: string,
+    resourceId: string,
+    input: RestoreResourceRequest,
+  ): Promise<Agent> {
+    return this.catalog.restore(token, teamId, resourceId, input);
   }
 
   async create(

@@ -5,6 +5,7 @@ import common from "../../App.module.css";
 import { canEditCatalog } from "./permissions";
 import type { CatalogRecord, VersionedEditor } from "./useVersionedEditor";
 import styles from "./catalog.module.css";
+import { CatalogHistory } from "./CatalogHistory";
 
 export function CatalogEditor<Definition, RecordType extends CatalogRecord>({
   editor,
@@ -33,6 +34,7 @@ export function CatalogEditor<Definition, RecordType extends CatalogRecord>({
     loadLatest,
     keepAsNew,
     saving,
+    restoring,
     success,
     writable,
   } = editor;
@@ -149,16 +151,18 @@ export function CatalogEditor<Definition, RecordType extends CatalogRecord>({
           {children}
           <div className={styles.saveBar}>
             <div role="status">
-              {saving
-                ? `Saving ${config.kind}…`
-                : loading
-                  ? `Loading saved ${config.kind}…`
-                  : success ||
-                    (dirty
-                      ? "Unsaved changes"
-                      : record
-                        ? "All changes saved"
-                        : "Not saved yet")}
+              {restoring
+                ? `Restoring ${config.kind}…`
+                : saving
+                  ? `Saving ${config.kind}…`
+                  : loading
+                    ? `Loading saved ${config.kind}…`
+                    : success ||
+                      (dirty
+                        ? "Unsaved changes"
+                        : record
+                          ? "All changes saved"
+                          : "Not saved yet")}
             </div>
             {writable && (
               <button
@@ -185,6 +189,7 @@ export function CatalogEditor<Definition, RecordType extends CatalogRecord>({
           </div>
         </form>
       )}
+      <CatalogHistory editor={editor} />
     </>
   );
 }

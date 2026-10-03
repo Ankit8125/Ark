@@ -40,6 +40,10 @@ ark/
 |   |   |   `-- catalog/
 |   |   |       |-- useVersionedEditor.ts # Shared save/load/conflict lifecycle
 |   |   |       |-- CatalogEditor.tsx  # Shared form chrome and field component
+|   |   |       |-- CatalogHistory.tsx # Saved snapshots and confirmed restore
+|   |   |       |-- CatalogHistory.test.tsx # History recovery/lifecycle checks
+|   |   |       |-- history-api.ts    # Shared history/restore HTTP adapter
+|   |   |       |-- history-api.test.tsx # Envelope and context validation
 |   |   |       |-- CatalogList.tsx    # Paginated loading and recovery
 |   |   |       |-- useDraftNavigation.tsx # Dirty/busy navigation protection
 |   |   |       |-- permissions.ts     # UI role projection; server is authority
@@ -119,6 +123,8 @@ V0.2 has focused `features/workspaces/`, `features/agents/`, and `features/flows
 Catalog saves validate the full definition, reauthorize the team in a transaction, lock/check its revision, validate the resulting public response, and commit a new snapshot plus audit event. Kind is checked alongside team and organization. Flow saves add dependency checks inside that transaction through one narrow validator callback. React Router's data router supplies dirty-form navigation blocking without replacing Vite or React. The [Workspace](07-workspaces.md), [Agent](08-agents.md), and [Flow](09-flows.md) guides explain each definition and its recovery behavior.
 
 The second catalog exposed real duplication, so transaction handling and browser recovery have shared implementations. The third adds typed dependency resolution without moving Flow rules into Workspace or Agent modules. Field layouts, contracts, and endpoint adapters remain feature-owned. A single place for conflict/retry/authorization mechanics reduces the risk that one feature receives a fix while another misses it. The trade-off is that shared changes require all three features' regression tests. There is no dynamic form schema or speculative plugin system.
+
+[History and restore](10-catalog-history.md) extend the same catalog boundary. History pages contain metadata; selecting a revision fetches its complete definition. Restore uses the source snapshot on the server and commits a fresh version after current authorization, expected-revision, and dependency checks. Shared `CatalogHistory` controls and a small request adapter reuse the existing editor's recovery and navigation handling.
 
 Extract a repository abstraction when persistence needs a real alternative or repeated query boundaries become difficult to test. Until then, the identity service's parameterized SQL and injected pool keep transaction ownership visible. Separate engine/runner entrypoints belong to their planned milestones, not this review.
 

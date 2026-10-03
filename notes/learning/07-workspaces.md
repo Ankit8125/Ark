@@ -53,7 +53,7 @@ Workspace form
 
 Creation starts at revision 1. Editing and saving creates revision 2 and retains revision 1. Reloading the page reads the saved configuration from the API. The workspace URL keeps the selected record; the selected team remains separately checked by the server.
 
-Two people can open revision 1. If the first person saves revision 2, the second person's revision-1 save receives a conflict. Their draft stays in the form until they explicitly load the latest saved version or leave. This avoids silently overwriting the first person's changes. There is no automatic merge or version-history screen yet.
+Two people can open revision 1. If the first person saves revision 2, the second person's revision-1 save receives a conflict. Their draft stays in the form until they explicitly load the latest saved version or leave. This avoids silently overwriting the first person's changes. There is no automatic merge. The [history guide](10-catalog-history.md) explains browsing and restoring earlier snapshots as new revisions.
 
 Network failures also retain the draft. Creation uses a stable request ID so retrying the identical request does not create another record. If the previous result is uncertain and the draft has changed, the form offers an explicit recovery choice. Updates require the saved revision; an uncertain update is reconciled by loading the latest record, never by blindly repeating a write.
 
@@ -61,4 +61,4 @@ Leaving a dirty form prompts before discarding input. Drafts exist only in the o
 
 ## Scope and verification
 
-This is the workspace portion of V0.2. The [Agent increment](08-agents.md) adds instruction/preference configuration; verified [Flows](09-flows.md) pin these definitions into an ordered recipe. History browsing/restore, deletion/archive, secret references, and session execution remain future work. See the [workspace findings](../findings/workspaces.md) for the API/storage contract and the [implementation record](../progress/2026-09-27-01-workspaces.md) for the original checks and limits.
+This is the workspace portion of V0.2. The [Agent increment](08-agents.md) adds instruction/preference configuration; verified [Flows](09-flows.md) pin these definitions into an ordered recipe. [Catalog history](10-catalog-history.md) adds browsing and restore. Deletion/archive, templates, secret references, and session execution remain future work. See the [workspace findings](../findings/workspaces.md) for the API/storage contract and the [implementation record](../progress/2026-09-27-01-workspaces.md) for the original checks and limits.

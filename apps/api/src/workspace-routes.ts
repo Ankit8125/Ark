@@ -6,6 +6,10 @@ import {
   WorkspaceVersionParamsSchema,
 } from "@ark/contracts";
 import type { FastifyInstance } from "fastify";
+import {
+  ResourceVersionListQuerySchema,
+  RestoreResourceRequestSchema,
+} from "@ark/contracts";
 import { z } from "zod";
 import { parseRequest } from "./errors.js";
 import type { WorkspaceService } from "./workspaces.js";
@@ -48,6 +52,37 @@ export function registerWorkspaceRoutes(
         teamId,
         workspaceId,
         versionId,
+      ),
+    };
+  });
+  app.get(`${detailPath}/versions`, async (request) => {
+    const { teamId, workspaceId } = parseRequest(
+      WorkspaceParamsSchema,
+      request.params,
+    );
+    const { cursor } = parseRequest(
+      ResourceVersionListQuerySchema,
+      request.query,
+    );
+    return workspaces.listVersions(
+      request.cookies.ark_session,
+      teamId,
+      workspaceId,
+      cursor,
+    );
+  });
+  app.post(`${detailPath}/restore`, { bodyLimit: 1024 }, async (request) => {
+    const { teamId, workspaceId } = parseRequest(
+      WorkspaceParamsSchema,
+      request.params,
+    );
+    const input = parseRequest(RestoreResourceRequestSchema, request.body);
+    return {
+      workspace: await workspaces.restore(
+        request.cookies.ark_session,
+        teamId,
+        workspaceId,
+        input,
       ),
     };
   });

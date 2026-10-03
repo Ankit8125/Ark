@@ -47,7 +47,7 @@ The first save creates revision 1. A later edit creates revision 2 while preserv
 
 If two editors open revision 1 and one saves first, the second save receives a conflict and retains its draft. Loading the latest version explicitly discards that unsaved draft. Network errors also retain drafts; retrying an identical creation uses its original ID. An uncertain update must be reconciled with the current saved version. Writes are never automatically retried.
 
-Leaving with unsaved changes asks before discarding. Drafts remain only in the open page; a browser crash or expired session can still lose them. Unknown stored schema versions are read-only. There is no history/restore screen yet.
+Leaving with unsaved changes asks before discarding. Drafts remain only in the open page; a browser crash or expired session can still lose them. Unknown stored schema versions are read-only. [Catalog history](10-catalog-history.md) lets you inspect complete earlier snapshots and restore one as a new revision.
 
 ## Where this fits
 

@@ -1,12 +1,21 @@
-import { FlowListResponseSchema, FlowSchema } from "@ark/contracts";
+import {
+  FlowDefinitionSchema,
+  FlowListResponseSchema,
+  FlowSchema,
+} from "@ark/contracts";
 import type {
   CreateFlowRequest,
   Flow,
   FlowDefinition,
   FlowListResponse,
   UpdateFlowRequest,
+  ResourceVersion,
 } from "@ark/contracts";
 import type { Pool } from "pg";
+import type {
+  RestoreResourceRequest,
+  ResourceVersionListResponse,
+} from "@ark/contracts";
 import { validateFlowDependencies } from "./flow-dependencies.js";
 import type { IdentityService } from "./identity.js";
 import { VersionedCatalogService } from "./versioned-catalog.js";
@@ -20,6 +29,7 @@ export class FlowService {
       identity,
       "flow",
       FlowSchema.parse,
+      FlowDefinitionSchema.parse,
       validateFlowDependencies,
     );
   }
@@ -42,6 +52,33 @@ export class FlowService {
     flowId: string,
   ): Promise<Flow> {
     return this.catalog.get(token, teamId, flowId);
+  }
+
+  async getVersion(
+    token: string | undefined,
+    teamId: string,
+    resourceId: string,
+    versionId: string,
+  ): Promise<ResourceVersion> {
+    return this.catalog.getVersion(token, teamId, resourceId, versionId);
+  }
+
+  async listVersions(
+    token: string | undefined,
+    teamId: string,
+    resourceId: string,
+    cursor?: number,
+  ): Promise<ResourceVersionListResponse> {
+    return this.catalog.listVersions(token, teamId, resourceId, cursor);
+  }
+
+  async restore(
+    token: string | undefined,
+    teamId: string,
+    resourceId: string,
+    input: RestoreResourceRequest,
+  ): Promise<Flow> {
+    return this.catalog.restore(token, teamId, resourceId, input);
   }
 
   async create(

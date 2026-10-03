@@ -1,4 +1,8 @@
-import { WorkspaceListResponseSchema, WorkspaceSchema } from "@ark/contracts";
+import {
+  WorkspaceDefinitionSchema,
+  WorkspaceListResponseSchema,
+  WorkspaceSchema,
+} from "@ark/contracts";
 import type {
   CreateWorkspaceRequest,
   ResourceVersion,
@@ -8,6 +12,10 @@ import type {
   WorkspaceListResponse,
 } from "@ark/contracts";
 import type { Pool } from "pg";
+import type {
+  RestoreResourceRequest,
+  ResourceVersionListResponse,
+} from "@ark/contracts";
 import type { IdentityService } from "./identity.js";
 import { VersionedCatalogService } from "./versioned-catalog.js";
 
@@ -20,6 +28,7 @@ export class WorkspaceService {
       identity,
       "workspace",
       WorkspaceSchema.parse,
+      WorkspaceDefinitionSchema.parse,
     );
   }
 
@@ -50,6 +59,24 @@ export class WorkspaceService {
     versionId: string,
   ): Promise<ResourceVersion> {
     return this.catalog.getVersion(token, teamId, workspaceId, versionId);
+  }
+
+  async listVersions(
+    token: string | undefined,
+    teamId: string,
+    resourceId: string,
+    cursor?: number,
+  ): Promise<ResourceVersionListResponse> {
+    return this.catalog.listVersions(token, teamId, resourceId, cursor);
+  }
+
+  async restore(
+    token: string | undefined,
+    teamId: string,
+    resourceId: string,
+    input: RestoreResourceRequest,
+  ): Promise<Workspace> {
+    return this.catalog.restore(token, teamId, resourceId, input);
   }
 
   async create(

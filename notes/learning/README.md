@@ -11,5 +11,6 @@ Read these in order or open the topic you need:
 7. [Workspaces](07-workspaces.md): create/edit configuration, saved versions, conflicts, and updated startup commands.
 8. [Agents](08-agents.md): instructions, stub runtime, model preferences, capabilities, and versioned editing.
 9. [Ordered Flows](09-flows.md): named inputs/outputs, ordered stages, pinned versions, validation, and save recovery.
+10. [Catalog history](10-catalog-history.md): browse complete snapshots and restore a saved definition as a new revision.
 
 Use [current progress](../progress/README.md) for verification and [findings](../findings/README.md) for durable decisions. Give future topics their own files and keep existing explanations aligned with implemented behavior.

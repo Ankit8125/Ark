@@ -15,7 +15,7 @@ This is intended work. The [progress notebook](../notes/progress/README.md) reco
 | V0.7      | Plan/publication approvals and bounded repair                                      | Stale evidence/approval rejected, exact commit binding, separate process status and quality verdict                                              |
 | V0.8      | One verified draft PR                                                              | Actual checks/review/approval, controlled push, response-loss reconciliation, verified remote head/base/draft                                    |
 
-Current position: local V0.1 identity and the V0.2 Workspace, Agent, and ordered Flow catalog slices are implemented and verified. The [Flow acceptance record](../notes/progress/2026-10-01-01-flow-completion.md) records full automated coverage, browser save/reload, version pins, and recovery checks. V0.2 remains incomplete. History/restore, archive, and templates need their own bounded follow-ups. The Sessions page is a shell; it cannot start an execution yet.
+Current position: local V0.1 identity and the V0.2 Workspace, Agent, and ordered Flow catalogs with [history and restore](../notes/progress/2026-10-02-01-catalog-history.md) are implemented and verified. V0.2 remains incomplete. Archive and templates need their own bounded follow-ups. The Sessions page is a shell; it cannot start an execution yet.
 
 ## V1 - First team-usable release
 
@@ -35,6 +35,6 @@ Deferred scope remains part of the product direction. It does not justify instal
 
 ## Next work package
 
-Add history browsing and restore as a new immutable revision, with current authorization, expected-revision checks, and revalidation of Flow dependencies. Existing identity and all three catalog suites remain regression checks. Archive/delete and templates remain separate follow-ups. Keep model calls and runner execution outside catalog editing. Consult current progress for the verified Git checkpoint before starting.
+Add archive with explicit behavior for inbound Flow references and unarchive rules. Define acceptance cases before changing list visibility or dependency availability. Existing identity and all three catalog suites remain regression checks. Deletion and templates remain separate follow-ups. Keep model calls and runner execution outside catalog editing. Consult [current progress](../notes/progress/README.md) for the verified Git checkpoint before starting.
 
 TypeScript strictness is explicit. Oxlint is retained intentionally for the current workspace; the [tooling findings](../notes/findings/codebase-and-tooling.md) record the deviation from the earlier ESLint plan. Real model calls and runner execution remain later work.

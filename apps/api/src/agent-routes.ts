@@ -6,6 +6,10 @@ import {
   UpdateAgentRequestSchema,
 } from "@ark/contracts";
 import type { FastifyInstance } from "fastify";
+import {
+  ResourceVersionListQuerySchema,
+  RestoreResourceRequestSchema,
+} from "@ark/contracts";
 import { z } from "zod";
 import type { AgentService } from "./agents.js";
 import { parseRequest } from "./errors.js";
@@ -42,6 +46,31 @@ export function registerAgentRoutes(
         teamId,
         agentId,
         versionId,
+      ),
+    };
+  });
+  app.get(`${detailPath}/versions`, async (request) => {
+    const { teamId, agentId } = parseRequest(AgentParamsSchema, request.params);
+    const { cursor } = parseRequest(
+      ResourceVersionListQuerySchema,
+      request.query,
+    );
+    return agents.listVersions(
+      request.cookies.ark_session,
+      teamId,
+      agentId,
+      cursor,
+    );
+  });
+  app.post(`${detailPath}/restore`, { bodyLimit: 1024 }, async (request) => {
+    const { teamId, agentId } = parseRequest(AgentParamsSchema, request.params);
+    const input = parseRequest(RestoreResourceRequestSchema, request.body);
+    return {
+      agent: await agents.restore(
+        request.cookies.ark_session,
+        teamId,
+        agentId,
+        input,
       ),
     };
   });

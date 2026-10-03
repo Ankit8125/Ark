@@ -1,6 +1,13 @@
 import { isDeepStrictEqual } from "node:util";
-import { ResourceVersionSchema } from "@ark/contracts";
-import type { ResourceVersion } from "@ark/contracts";
+import {
+  ResourceVersionSchema,
+  ResourceVersionListResponseSchema,
+} from "@ark/contracts";
+import type {
+  ResourceVersion,
+  ResourceVersionListResponse,
+  RestoreResourceRequest,
+} from "@ark/contracts";
 import { withTransaction } from "@ark/db";
 import type { Pool, PoolClient } from "pg";
 import { ApiFailure } from "./errors.js";
@@ -89,6 +96,7 @@ export class VersionedCatalogService<Definition extends NamedDefinition> {
   private readonly identity: IdentityService;
   private readonly kind: CatalogKind;
   private readonly parseRecord: (value: unknown) => CatalogRecord;
+  private readonly parseDefinition: (value: unknown) => Definition;
   private readonly validateDefinition:
     DefinitionValidator<Definition> | undefined;
 
@@ -97,12 +105,14 @@ export class VersionedCatalogService<Definition extends NamedDefinition> {
     identity: IdentityService,
     kind: CatalogKind,
     parseRecord: (value: unknown) => CatalogRecord,
+    parseDefinition: (value: unknown) => Definition,
     validateDefinition?: DefinitionValidator<Definition>,
   ) {
     this.pool = pool;
     this.identity = identity;
     this.kind = kind;
     this.parseRecord = parseRecord;
+    this.parseDefinition = parseDefinition;
     this.validateDefinition = validateDefinition;
   }
 
@@ -203,6 +213,47 @@ export class VersionedCatalogService<Definition extends NamedDefinition> {
     });
   }
 
+  async listVersions(
+    token: string | undefined,
+    teamId: string,
+    resourceId: string,
+    cursor?: number,
+  ): Promise<ResourceVersionListResponse> {
+    const access = await this.identity.authorizeTeam(token, teamId);
+    // Check the resource even when this cursor would produce an empty page.
+    const existing = await this.find(this.pool, access, resourceId);
+    if (!existing) throw this.notFound();
+    const result = await this.pool.query<Omit<VersionRow, "definition">>(
+      `SELECT r.id AS resource_id, r.team_id, v.id AS version_id,
+              v.revision, v.schema_version, v.created_at
+       FROM resources r JOIN resource_versions v ON v.resource_id = r.id
+       WHERE r.id = $1 AND r.team_id = $2 AND r.organization_id = $3
+         AND r.kind = $4 AND ($5::integer IS NULL OR v.revision < $5)
+       ORDER BY v.revision DESC LIMIT $6`,
+      [
+        resourceId,
+        teamId,
+        access.organizationId,
+        this.kind,
+        cursor ?? null,
+        pageSize + 1,
+      ],
+    );
+    const visible = result.rows.slice(0, pageSize);
+    return ResourceVersionListResponseSchema.parse({
+      versions: visible.map((row) => ({
+        resourceId: row.resource_id,
+        teamId: row.team_id,
+        versionId: row.version_id,
+        revision: row.revision,
+        schemaVersion: row.schema_version,
+        createdAt: row.created_at.toISOString(),
+      })),
+      nextCursor:
+        result.rows.length > pageSize ? visible.at(-1)!.revision : null,
+    });
+  }
+
   private async find(
     client: Pool | PoolClient,
     access: TeamAccess,
@@ -237,7 +288,8 @@ export class VersionedCatalogService<Definition extends NamedDefinition> {
     resourceId: string,
     revision: number,
     input: VersionInput<Definition>,
-    action: "created" | "updated",
+    action: "created" | "updated" | "restored",
+    source?: { sourceVersionId: string; sourceRevision: number },
   ): Promise<void> {
     await client.query(
       `INSERT INTO resource_versions
@@ -262,7 +314,7 @@ export class VersionedCatalogService<Definition extends NamedDefinition> {
         access.userId,
         `${this.kind}.${action}`,
         resourceId,
-        JSON.stringify({ revision }),
+        JSON.stringify({ revision, ...source }),
       ],
     );
   }
@@ -363,6 +415,103 @@ export class VersionedCatalogService<Definition extends NamedDefinition> {
         );
         const row = await this.find(client, access, resourceId);
         if (!row) throw new Error("Catalog resource was not updated.");
+        return this.record(row);
+      });
+    } catch (error) {
+      return this.mapConstraintFailure(error);
+    }
+  }
+
+  async restore(
+    token: string | undefined,
+    teamId: string,
+    resourceId: string,
+    input: RestoreResourceRequest,
+  ): Promise<CatalogRecord> {
+    try {
+      return await withTransaction(this.pool, async (client) => {
+        const access = await this.identity.authorizeTeam(token, teamId, {
+          client,
+        });
+        const existing = await this.find(client, access, resourceId, true);
+        if (!existing) throw this.notFound();
+        if (existing.schema_version !== 1) {
+          throw new ApiFailure(
+            409,
+            "UNSUPPORTED_SCHEMA_VERSION",
+            `This ${this.kind} uses an unsupported schema version and is read-only.`,
+          );
+        }
+        if (existing.revision !== input.revision) {
+          throw new ApiFailure(
+            409,
+            "REVISION_CONFLICT",
+            `This ${this.kind} has changed. Load the latest revision before restoring.`,
+          );
+        }
+        const result = await client.query<{
+          id: string;
+          revision: number;
+          schema_version: number;
+          definition: unknown;
+        }>(
+          `SELECT id, revision, schema_version, definition FROM resource_versions
+           WHERE resource_id = $1 AND id = $2`,
+          [resourceId, input.versionId],
+        );
+        const source = result.rows[0];
+        if (!source) throw this.notFound();
+        if (source.schema_version !== 1) {
+          throw new ApiFailure(
+            409,
+            "UNSUPPORTED_SCHEMA_VERSION",
+            "This saved version uses an unsupported schema and cannot be restored.",
+            { versionId: ["Choose a version with a supported schema."] },
+          );
+        }
+        let definition: Definition;
+        try {
+          definition = this.parseDefinition(source.definition);
+        } catch {
+          throw new ApiFailure(
+            409,
+            "INVALID_STORED_DEFINITION",
+            "This saved definition is unsupported or invalid and cannot be restored.",
+            {
+              versionId: [
+                "Choose a version with a supported, valid definition.",
+              ],
+            },
+          );
+        }
+        try {
+          // An invalid current snapshot is also read-only, matching the editor.
+          this.parseDefinition(existing.definition);
+        } catch {
+          throw new ApiFailure(
+            409,
+            "INVALID_STORED_DEFINITION",
+            `The current ${this.kind} definition is invalid and is read-only.`,
+          );
+        }
+        // Resolve the historical pins again under today's access/ownership.
+        await this.validateDefinition?.(client, access, definition);
+        const revision = existing.revision + 1;
+        await client.query(
+          `UPDATE resources SET name = $1, revision = $2, updated_at = now() WHERE id = $3`,
+          [definition.name, revision, resourceId],
+        );
+        await this.recordVersion(
+          client,
+          access,
+          resourceId,
+          revision,
+          { schemaVersion: 1, definition },
+          "restored",
+          { sourceVersionId: source.id, sourceRevision: source.revision },
+        );
+        const row = await this.find(client, access, resourceId);
+        if (!row) throw new Error("Catalog resource was not restored.");
         return this.record(row);
       });
     } catch (error) {

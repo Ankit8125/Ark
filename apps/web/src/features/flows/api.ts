@@ -7,6 +7,7 @@ import {
   type UpdateFlowRequest,
 } from "@ark/contracts";
 import { requestJson } from "../../api";
+import { catalogHistoryApi } from "../catalog/history-api";
 
 function collection(teamId: string) {
   return `/api/teams/${encodeURIComponent(teamId)}/flows`;
@@ -22,6 +23,7 @@ function flowResponse(teamId: string, id: string) {
   };
 }
 export const flowApi = {
+  ...catalogHistoryApi("flows", flowResponse),
   list: (teamId: string, cursor?: string, signal?: AbortSignal) =>
     requestJson(
       `${collection(teamId)}${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
