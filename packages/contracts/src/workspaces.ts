@@ -1,3 +1,7 @@
+import {
+  CatalogStatusSchema,
+  LifecycleRevisionSchema,
+} from "./catalog-lifecycle.js";
 import { z } from "zod";
 import { CatalogTextSchema as text } from "./catalog-text.js";
 
@@ -85,6 +89,7 @@ export const CreateWorkspaceRequestSchema = z.strictObject({
 });
 export const UpdateWorkspaceRequestSchema = z.strictObject({
   revision: z.number().int().min(1).max(2_147_483_646),
+  lifecycleRevision: LifecycleRevisionSchema,
   schemaVersion: z.literal(1),
   definition: WorkspaceDefinitionSchema,
 });
@@ -94,6 +99,7 @@ export const WorkspaceParamsSchema = z.strictObject({
 });
 export const WorkspaceListQuerySchema = z.strictObject({
   cursor: z.uuid().optional(),
+  status: CatalogStatusSchema.default("active"),
 });
 export const WorkspaceVersionParamsSchema = WorkspaceParamsSchema.extend({
   versionId: z.uuid(),
@@ -106,6 +112,8 @@ export const WorkspaceSummarySchema = z.strictObject({
   versionId: z.uuid(),
   schemaVersion: z.number().int().positive(),
   updatedAt: z.iso.datetime(),
+  archivedAt: z.iso.datetime().nullable(),
+  lifecycleRevision: LifecycleRevisionSchema,
 });
 // Unknown versions can be displayed as read-only without stripping their stored fields.
 export const WorkspaceSchema = WorkspaceSummarySchema.extend({

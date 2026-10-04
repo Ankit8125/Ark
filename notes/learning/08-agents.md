@@ -14,7 +14,7 @@ pnpm.cmd db:prepare
 pnpm.cmd dev
 ```
 
-The new migration is `003_agents.sql`. The preparation command checks earlier migrations, preserves existing records and the Docker volume, and applies missing migrations. Keep your existing ignored `.env`; no additional installation or provider credential is needed.
+The Agent catalog introduced migration `003_agents.sql`; archive adds `005_catalog_archive.sql`. The preparation command checks earlier migrations, preserves existing records and the Docker volume, and applies missing migrations. Keep your existing ignored `.env`; no additional installation or provider credential is needed.
 
 Open the Vite URL, sign in or complete first-owner setup, select your team, then open **Agents** and choose **New agent**. Admins and developers can save. Reviewers and viewers can read.
 
@@ -49,6 +49,10 @@ If two editors open revision 1 and one saves first, the second save receives a c
 
 Leaving with unsaved changes asks before discarding. Drafts remain only in the open page; a browser crash or expired session can still lose them. Unknown stored schema versions are read-only. [Catalog history](10-catalog-history.md) lets you inspect complete earlier snapshots and restore one as a new revision.
 
+## Archive and unarchive
+
+Use **Archive agent** to move a saved Agent out of the active catalog while retaining its instructions, name, and history. Choose **Archived** in the catalog filter to find it again. An active Flow must stop using the Agent before it can be archived. Archived Agents are read-only until unarchived, and the saved revision stays unchanged. A separate lifecycle counter makes drafts opened before an archive/unarchive cycle stale. The [archive guide](11-catalog-archive.md) explains confirmation and recovery.
+
 ## Where this fits
 
-Workspaces describe repository and environment configuration. Agents describe instructions and preferences. The verified [Flow editor](09-flows.md) refers to authorized, immutable Workspace and Agent versions. Changing an Agent creates a new version and does not advance existing Flow pins. Session execution, runners, and real model adapters belong to later milestones. See [Agent findings](../findings/agents.md) for the storage/security contract and [progress](../progress/README.md) for verified checks.
+Workspaces describe repository and environment configuration. Agents describe instructions and preferences. The verified [Flow editor](09-flows.md) refers to authorized, immutable Workspace and Agent versions. Changing an Agent creates a new version and does not advance existing Flow pins. Templates, deletion, session execution, runners, and real model adapters belong to later milestones. See [Agent findings](../findings/agents.md) for the storage/security contract and [progress](../progress/README.md) for verified checks.

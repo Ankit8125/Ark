@@ -9,10 +9,10 @@ Restoring revision 1 while revision 3 is current creates revision 4 with revisio
 The confirmation explains that restore replaces the editor's draft. Cancel keeps the draft. A failed request also keeps it. If another person saved after you opened the resource, restore receives a conflict; load the latest saved resource explicitly before deciding whether to try again. A lost response can mean the server already committed, so inspect the latest revision before retrying. Restore never retries automatically.
 
 ```text
-Choose saved snapshot + current expected revision
+Choose saved snapshot + expected definition/lifecycle revisions
     -> confirm restore
     -> API: current session, explicit team membership, write role
-    -> lock current resource and check expected revision
+    -> lock current resource and check expected counters and active state
     -> validate stored schema and definition
     -> Flow: check original dependency pins under current access
     -> commit new snapshot, current pointer, and source audit together
@@ -23,4 +23,4 @@ A restored Flow retains the exact Workspace and Agent version IDs from the selec
 
 Unsupported stored schemas remain readable as complete definitions and cannot be restored. Invalid saved definitions also fail safely. History loads newest first in pages of 50. Opening one revision loads its full definition separately, so listing history does not fetch every saved instruction or Flow recipe.
 
-This increment uses the existing version tables and adds no migration or dependency. Start the project with the existing environment and volume using the commands in the [Workspace guide](07-workspaces.md). Saving or restoring configuration performs no repository access, command execution, or model call. Archive and templates remain separate work.
+History itself uses the existing version tables and adds no migration or dependency. The subsequent [archive increment](11-catalog-archive.md) adds migration 005 and requires the lifecycle counter for restore. Archived records remain readable; unarchive them before restoring a definition. Start the project with the existing environment and volume using the commands in the [Workspace guide](07-workspaces.md). Saving or restoring configuration performs no repository access, command execution, or model call. Templates remain separate work.

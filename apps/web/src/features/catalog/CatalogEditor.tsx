@@ -35,6 +35,10 @@ export function CatalogEditor<Definition, RecordType extends CatalogRecord>({
     keepAsNew,
     saving,
     restoring,
+    changingLifecycle,
+    lifecycleFailed,
+    lifecycleWritable,
+    changeLifecycle,
     success,
     writable,
   } = editor;
@@ -66,7 +70,10 @@ export function CatalogEditor<Definition, RecordType extends CatalogRecord>({
     );
   return (
     <>
-      <Link className={styles.backLink} to={`/${config.plural}`}>
+      <Link
+        className={styles.backLink}
+        to={`/${config.plural}${record?.archivedAt ? "?status=archived" : ""}`}
+      >
         <ArrowLeft size={15} aria-hidden="true" />
         All {config.plural}
       </Link>
@@ -76,7 +83,7 @@ export function CatalogEditor<Definition, RecordType extends CatalogRecord>({
           <h1>{record?.name ?? `New ${config.kind}`}</h1>
           <p>
             {record
-              ? `Revision ${record.revision} · Saved configuration`
+              ? `Revision ${record.revision} · ${record.archivedAt ? "Archived" : "Saved configuration"}`
               : config.createDescription}
           </p>
         </div>
@@ -101,6 +108,12 @@ export function CatalogEditor<Definition, RecordType extends CatalogRecord>({
           noValidate
           aria-busy={busy}
         >
+          {record?.archivedAt && (
+            <div className={styles.notice} role="status">
+              This {config.kind} is archived. Its saved configuration and
+              history are read-only. Unarchive it to edit or restore revisions.
+            </div>
+          )}
           {(!canEditCatalog(team) || writeDenied) && (
             <div className={styles.notice} role="status">
               You have read-only access. A current team admin or developer can
@@ -151,24 +164,26 @@ export function CatalogEditor<Definition, RecordType extends CatalogRecord>({
           {children}
           <div className={styles.saveBar}>
             <div role="status">
-              {restoring
-                ? `Restoring ${config.kind}…`
-                : saving
-                  ? `Saving ${config.kind}…`
-                  : loading
-                    ? `Loading saved ${config.kind}…`
-                    : success ||
-                      (dirty
-                        ? "Unsaved changes"
-                        : record
-                          ? "All changes saved"
-                          : "Not saved yet")}
+              {changingLifecycle
+                ? `${record?.archivedAt ? "Unarchiving" : "Archiving"} ${config.kind}…`
+                : restoring
+                  ? `Restoring ${config.kind}…`
+                  : saving
+                    ? `Saving ${config.kind}…`
+                    : loading
+                      ? `Loading saved ${config.kind}…`
+                      : success ||
+                        (dirty
+                          ? "Unsaved changes"
+                          : record
+                            ? "All changes saved"
+                            : "Not saved yet")}
             </div>
             {writable && (
               <button
                 className={`${common.primaryButton} ${styles.fitButton}`}
                 type="submit"
-                disabled={busy}
+                disabled={busy || conflict !== null}
               >
                 {saving ? (
                   <LoaderCircle
@@ -188,6 +203,62 @@ export function CatalogEditor<Definition, RecordType extends CatalogRecord>({
             )}
           </div>
         </form>
+      )}
+      {record && supported && (
+        <section
+          className={styles.lifecyclePanel}
+          aria-labelledby="catalog-lifecycle-heading"
+          aria-busy={changingLifecycle}
+        >
+          <h2 id="catalog-lifecycle-heading">
+            {record.archivedAt
+              ? "Archived configuration"
+              : "Archive configuration"}
+          </h2>
+          <p>
+            {record.archivedAt
+              ? "Unarchive to return this configuration to the active catalog. Its saved revision stays unchanged."
+              : "Move this configuration out of the active catalog while keeping its saved definition, name, and history."}
+            {config.kind !== "flow" &&
+              !record.archivedAt &&
+              " Active Flows must stop using it before it can be archived."}
+            {config.kind === "flow" &&
+              record.archivedAt &&
+              " Unarchiving checks that its original pinned dependencies are active and supported."}
+          </p>
+          {lifecycleFailed && (
+            <div className={styles.notice} role="status">
+              <p>
+                Your draft is still displayed. If the response was lost, load
+                latest to check the saved status before trying again.
+              </p>
+              {!conflict && (
+                <button
+                  type="button"
+                  className={`${common.secondaryButton} ${styles.fitButton}`}
+                  disabled={busy}
+                  onClick={() => void loadLatest()}
+                >
+                  Load latest
+                </button>
+              )}
+            </div>
+          )}
+          {lifecycleWritable && (
+            <button
+              type="button"
+              className={`${common.secondaryButton} ${styles.fitButton}`}
+              disabled={busy || conflict !== null}
+              onClick={() => void changeLifecycle()}
+            >
+              {changingLifecycle
+                ? record.archivedAt
+                  ? "Unarchiving…"
+                  : "Archiving…"
+                : `${record.archivedAt ? "Unarchive" : "Archive"} ${config.kind}`}
+            </button>
+          )}
+        </section>
       )}
       <CatalogHistory editor={editor} />
     </>

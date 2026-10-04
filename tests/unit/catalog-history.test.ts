@@ -51,14 +51,14 @@ describe("catalog history contracts", () => {
   });
 
   it("requires an exact source identity and expected current revision without client definitions", () => {
-    const request = { revision: 1, versionId: id };
+    const request = { revision: 1, lifecycleRevision: 1, versionId: id };
     expect(RestoreResourceRequestSchema.parse(request)).toEqual(request);
     expect(
       RestoreResourceRequestSchema.parse({
         ...request,
         revision: 2_147_483_646,
       }),
-    ).toEqual({ revision: 2_147_483_646, versionId: id });
+    ).toEqual({ revision: 2_147_483_646, lifecycleRevision: 1, versionId: id });
     for (const revision of [0, -1, 1.5, "1", 2_147_483_647]) {
       expect(
         RestoreResourceRequestSchema.safeParse({ ...request, revision })

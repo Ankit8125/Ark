@@ -1,3 +1,4 @@
+import type { CatalogStatus, ResourceLifecycleRequest } from "@ark/contracts";
 import {
   WorkspaceDefinitionSchema,
   WorkspaceListResponseSchema,
@@ -36,8 +37,9 @@ export class WorkspaceService {
     token: string | undefined,
     teamId: string,
     cursor?: string,
+    status: CatalogStatus = "active",
   ): Promise<WorkspaceListResponse> {
-    const page = await this.catalog.list(token, teamId, cursor);
+    const page = await this.catalog.list(token, teamId, cursor, status);
     return WorkspaceListResponseSchema.parse({
       workspaces: page.resources,
       nextCursor: page.nextCursor,
@@ -77,6 +79,16 @@ export class WorkspaceService {
     input: RestoreResourceRequest,
   ): Promise<Workspace> {
     return this.catalog.restore(token, teamId, resourceId, input);
+  }
+
+  async setArchived(
+    token: string | undefined,
+    teamId: string,
+    resourceId: string,
+    input: ResourceLifecycleRequest,
+    archived: boolean,
+  ): Promise<Workspace> {
+    return this.catalog.setArchived(token, teamId, resourceId, input, archived);
   }
 
   async create(

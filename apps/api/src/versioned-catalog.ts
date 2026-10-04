@@ -7,11 +7,14 @@ import type {
   ResourceVersion,
   ResourceVersionListResponse,
   RestoreResourceRequest,
+  ResourceLifecycleRequest,
+  CatalogStatus,
 } from "@ark/contracts";
 import { withTransaction } from "@ark/db";
 import type { Pool, PoolClient } from "pg";
 import { ApiFailure } from "./errors.js";
 import type { IdentityService, TeamAccess } from "./identity.js";
+import { validateNoActiveFlowReferences } from "./flow-dependencies.js";
 
 type CatalogKind = "workspace" | "agent" | "flow";
 interface NamedDefinition {
@@ -28,6 +31,7 @@ type CreateInput<Definition extends NamedDefinition> =
 type UpdateInput<Definition extends NamedDefinition> =
   VersionInput<Definition> & {
     revision: number;
+    lifecycleRevision: number;
   };
 
 interface CatalogSummaryRow {
@@ -38,6 +42,8 @@ interface CatalogSummaryRow {
   version_id: string;
   schema_version: number;
   updated_at: Date;
+  archived_at: Date | null;
+  lifecycle_revision: number;
 }
 interface CatalogRow extends CatalogSummaryRow {
   created_at: Date;
@@ -51,6 +57,8 @@ interface CatalogSummary {
   versionId: string;
   schemaVersion: number;
   updatedAt: string;
+  archivedAt: string | null;
+  lifecycleRevision: number;
 }
 interface CatalogRecord extends CatalogSummary {
   createdAt: string;
@@ -72,6 +80,7 @@ type DefinitionValidator<Definition> = (
 ) => Promise<void>;
 
 const summaryColumns = `r.id, r.team_id, r.name, r.revision, r.updated_at,
+  r.archived_at, r.lifecycle_revision,
   v.id AS version_id, v.schema_version`;
 const currentVersion = `JOIN resource_versions v
   ON v.resource_id = r.id AND v.revision = r.revision`;
@@ -86,6 +95,8 @@ function summary(row: CatalogSummaryRow): CatalogSummary {
     versionId: row.version_id,
     schemaVersion: row.schema_version,
     updatedAt: row.updated_at.toISOString(),
+    archivedAt: row.archived_at?.toISOString() ?? null,
+    lifecycleRevision: row.lifecycle_revision,
   };
 }
 
@@ -134,6 +145,48 @@ export class VersionedCatalogService<Definition extends NamedDefinition> {
     );
   }
 
+  private assertActive(row: CatalogRow): void {
+    if (row.archived_at !== null)
+      throw new ApiFailure(
+        409,
+        "RESOURCE_ARCHIVED",
+        `This ${this.kind} is archived. Load the latest record and unarchive it before editing or restoring.`,
+      );
+  }
+
+  private assertExpected(
+    row: CatalogRow,
+    input: { revision: number; lifecycleRevision: number },
+  ): void {
+    if (
+      row.revision !== input.revision ||
+      row.lifecycle_revision !== input.lifecycleRevision
+    )
+      throw new ApiFailure(
+        409,
+        "REVISION_CONFLICT",
+        `This ${this.kind} has changed. Load the latest record before trying again.`,
+      );
+  }
+
+  private supportedDefinition(row: CatalogRow): Definition {
+    if (row.schema_version !== 1)
+      throw new ApiFailure(
+        409,
+        "UNSUPPORTED_SCHEMA_VERSION",
+        `This ${this.kind} uses an unsupported schema version and is read-only.`,
+      );
+    try {
+      return this.parseDefinition(row.definition);
+    } catch {
+      throw new ApiFailure(
+        409,
+        "INVALID_STORED_DEFINITION",
+        `The current ${this.kind} definition is invalid and is read-only.`,
+      );
+    }
+  }
+
   private mapConstraintFailure(error: unknown): never {
     if (
       error instanceof Error &&
@@ -155,6 +208,7 @@ export class VersionedCatalogService<Definition extends NamedDefinition> {
     token: string | undefined,
     teamId: string,
     cursor?: string,
+    status: CatalogStatus = "active",
   ): Promise<{ resources: CatalogSummary[]; nextCursor: string | null }> {
     const access = await this.identity.authorizeTeam(token, teamId);
     const result = await this.pool.query<CatalogSummaryRow>(
@@ -162,8 +216,16 @@ export class VersionedCatalogService<Definition extends NamedDefinition> {
        FROM resources r ${currentVersion}
        WHERE r.team_id = $1 AND r.organization_id = $2 AND r.kind = $3
          AND ($4::uuid IS NULL OR r.id > $4::uuid)
+         AND (r.archived_at IS NOT NULL) = $6
        ORDER BY r.id LIMIT $5`,
-      [teamId, access.organizationId, this.kind, cursor ?? null, pageSize + 1],
+      [
+        teamId,
+        access.organizationId,
+        this.kind,
+        cursor ?? null,
+        pageSize + 1,
+        status === "archived",
+      ],
     );
     const visible = result.rows.slice(0, pageSize);
     return {
@@ -346,6 +408,8 @@ export class VersionedCatalogService<Definition extends NamedDefinition> {
           if (
             !existing ||
             existing.revision !== 1 ||
+            existing.lifecycle_revision !== 1 ||
+            existing.archived_at !== null ||
             existing.schema_version !== input.schemaVersion ||
             !isDeepStrictEqual(existing.definition, input.definition)
           ) {
@@ -384,20 +448,9 @@ export class VersionedCatalogService<Definition extends NamedDefinition> {
         });
         const existing = await this.find(client, access, resourceId, true);
         if (!existing) throw this.notFound();
-        if (existing.schema_version !== 1) {
-          throw new ApiFailure(
-            409,
-            "UNSUPPORTED_SCHEMA_VERSION",
-            `This ${this.kind} uses an unsupported schema version and is read-only.`,
-          );
-        }
-        if (existing.revision !== input.revision) {
-          throw new ApiFailure(
-            409,
-            "REVISION_CONFLICT",
-            `This ${this.kind} has changed. Reload it before saving again.`,
-          );
-        }
+        this.assertActive(existing);
+        this.assertExpected(existing, input);
+        this.supportedDefinition(existing);
         await this.validateDefinition?.(client, access, input.definition);
         const revision = existing.revision + 1;
         await client.query(
@@ -435,20 +488,9 @@ export class VersionedCatalogService<Definition extends NamedDefinition> {
         });
         const existing = await this.find(client, access, resourceId, true);
         if (!existing) throw this.notFound();
-        if (existing.schema_version !== 1) {
-          throw new ApiFailure(
-            409,
-            "UNSUPPORTED_SCHEMA_VERSION",
-            `This ${this.kind} uses an unsupported schema version and is read-only.`,
-          );
-        }
-        if (existing.revision !== input.revision) {
-          throw new ApiFailure(
-            409,
-            "REVISION_CONFLICT",
-            `This ${this.kind} has changed. Load the latest revision before restoring.`,
-          );
-        }
+        this.assertActive(existing);
+        this.assertExpected(existing, input);
+        this.supportedDefinition(existing);
         const result = await client.query<{
           id: string;
           revision: number;
@@ -484,16 +526,6 @@ export class VersionedCatalogService<Definition extends NamedDefinition> {
             },
           );
         }
-        try {
-          // An invalid current snapshot is also read-only, matching the editor.
-          this.parseDefinition(existing.definition);
-        } catch {
-          throw new ApiFailure(
-            409,
-            "INVALID_STORED_DEFINITION",
-            `The current ${this.kind} definition is invalid and is read-only.`,
-          );
-        }
         // Resolve the historical pins again under today's access/ownership.
         await this.validateDefinition?.(client, access, definition);
         const revision = existing.revision + 1;
@@ -517,5 +549,55 @@ export class VersionedCatalogService<Definition extends NamedDefinition> {
     } catch (error) {
       return this.mapConstraintFailure(error);
     }
+  }
+
+  async setArchived(
+    token: string | undefined,
+    teamId: string,
+    resourceId: string,
+    input: ResourceLifecycleRequest,
+    archived: boolean,
+  ): Promise<CatalogRecord> {
+    return withTransaction(this.pool, async (client) => {
+      const access = await this.identity.authorizeTeam(token, teamId, {
+        client,
+      });
+      const existing = await this.find(client, access, resourceId, true);
+      if (!existing) throw this.notFound();
+      this.assertExpected(existing, input);
+      const definition = this.supportedDefinition(existing);
+      if ((existing.archived_at !== null) === archived)
+        throw new ApiFailure(
+          409,
+          "LIFECYCLE_CONFLICT",
+          `This ${this.kind} is already ${archived ? "archived" : "active"}. Load the latest record.`,
+        );
+      if (archived && this.kind !== "flow") {
+        await validateNoActiveFlowReferences(client, access, resourceId);
+      } else if (!archived) {
+        // In particular, reactivating a Flow rechecks its original exact pins.
+        await this.validateDefinition?.(client, access, definition);
+      }
+      const lifecycleRevision = existing.lifecycle_revision + 1;
+      await client.query(
+        `UPDATE resources SET archived_at = CASE WHEN $1 THEN now() ELSE NULL END,
+           lifecycle_revision = $2, updated_at = now() WHERE id = $3`,
+        [archived, lifecycleRevision, resourceId],
+      );
+      await client.query(
+        `INSERT INTO audit_events (organization_id, actor_user_id, action, target_id, metadata)
+         VALUES ($1, $2, $3, $4, $5::jsonb)`,
+        [
+          access.organizationId,
+          access.userId,
+          `${this.kind}.${archived ? "archived" : "unarchived"}`,
+          resourceId,
+          JSON.stringify({ revision: existing.revision, lifecycleRevision }),
+        ],
+      );
+      const row = await this.find(client, access, resourceId);
+      if (!row) throw new Error("Catalog lifecycle was not updated.");
+      return this.record(row);
+    });
   }
 }

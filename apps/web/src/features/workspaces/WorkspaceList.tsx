@@ -1,10 +1,15 @@
-import type { Team } from "@ark/contracts";
+import type { CatalogStatus, Team } from "@ark/contracts";
 import { FolderGit2 } from "lucide-react";
 import { CatalogList } from "../catalog/CatalogList";
 import { workspaceApi } from "./api";
 
-async function loadPage(teamId: string, cursor?: string, signal?: AbortSignal) {
-  const result = await workspaceApi.list(teamId, cursor, signal);
+async function loadPage(
+  teamId: string,
+  cursor?: string,
+  signal?: AbortSignal,
+  status: CatalogStatus = "active",
+) {
+  const result = await workspaceApi.list(teamId, cursor, signal, status);
   return { items: result.workspaces, nextCursor: result.nextCursor };
 }
 

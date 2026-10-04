@@ -57,6 +57,8 @@ function saved(overrides: Partial<Workspace> = {}): Workspace {
     id: workspaceId,
     teamId: team.id,
     name: definition.name,
+    archivedAt: null,
+    lifecycleRevision: 1,
     revision: 1,
     versionId: "799a26b5-b9c6-4e98-b37b-b5bbf8a24f60",
     schemaVersion: 1,
@@ -285,6 +287,7 @@ describe("workspace editor recovery and access", () => {
     await submit();
     expect(vi.mocked(workspaceApi.update).mock.calls[1]?.[2]).toEqual({
       revision: 1,
+      lifecycleRevision: 1,
       schemaVersion: 1,
       definition: {
         ...definition,

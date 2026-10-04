@@ -331,6 +331,25 @@ describe("ordered flow contracts", () => {
       expect(
         UpdateFlowRequestSchema.safeParse({
           revision,
+          lifecycleRevision: 1,
+          schemaVersion: 1,
+          definition,
+        }).success,
+      ).toBe(false);
+    }
+    for (const lifecycleRevision of [
+      undefined,
+      null,
+      0,
+      -1,
+      1.5,
+      "1",
+      2_147_483_648,
+    ]) {
+      expect(
+        UpdateFlowRequestSchema.safeParse({
+          revision: 1,
+          lifecycleRevision,
           schemaVersion: 1,
           definition,
         }).success,
@@ -339,6 +358,7 @@ describe("ordered flow contracts", () => {
     expect(
       UpdateFlowRequestSchema.parse({
         revision: 1,
+        lifecycleRevision: 1,
         schemaVersion: 1,
         definition,
       }).revision,
@@ -350,13 +370,18 @@ describe("ordered flow contracts", () => {
     expect(
       FlowParamsSchema.safeParse({ teamId: id, flowId: "bad" }).success,
     ).toBe(false);
-    expect(FlowListQuerySchema.parse({})).toEqual({});
-    expect(FlowListQuerySchema.parse({ cursor: id })).toEqual({ cursor: id });
+    expect(FlowListQuerySchema.parse({})).toEqual({ status: "active" });
+    expect(FlowListQuerySchema.parse({ cursor: id })).toEqual({
+      cursor: id,
+      status: "active",
+    });
     expect(FlowListQuerySchema.safeParse({ cursor: "bad" }).success).toBe(
       false,
     );
     expect(FlowListQuerySchema.safeParse({ limit: 1000 }).success).toBe(false);
     const summary = {
+      archivedAt: null,
+      lifecycleRevision: 1,
       id,
       teamId: id,
       name: definition.name,
@@ -382,6 +407,8 @@ describe("ordered flow contracts", () => {
         teamId: id,
         versionId: id,
         name: definition.name,
+        archivedAt: null,
+        lifecycleRevision: 1,
         revision: 2,
         schemaVersion: 2,
         definition: future,

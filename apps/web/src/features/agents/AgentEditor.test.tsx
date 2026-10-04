@@ -44,6 +44,8 @@ function saved(overrides: Partial<Agent> = {}): Agent {
     id: agentId,
     teamId: team.id,
     name: definition.name,
+    archivedAt: null,
+    lifecycleRevision: 1,
     revision: 1,
     versionId: "bb42b83e-c60a-43c0-a0ed-8b3860dfb16b",
     schemaVersion: 1,
@@ -233,6 +235,7 @@ describe("agent catalog form and recovery", () => {
     await submit();
     expect(vi.mocked(agentApi.update).mock.calls[1]![2]).toEqual({
       revision: 1,
+      lifecycleRevision: 1,
       schemaVersion: 1,
       definition: {
         ...definition,

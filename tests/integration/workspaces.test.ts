@@ -83,7 +83,7 @@ const update = (
   mutate(
     "PUT",
     detailPath(teamId, id),
-    { revision, schemaVersion: 1, definition: value },
+    { revision, lifecycleRevision: 1, schemaVersion: 1, definition: value },
     cookie,
   );
 
@@ -153,6 +153,7 @@ describe("V0.2 workspace catalog with real PostgreSQL", () => {
       (
         await mutate("PUT", detailPath(teamId, id), {
           revision: 1,
+          lifecycleRevision: 1,
           schemaVersion: 1,
           definition,
         })
@@ -253,6 +254,7 @@ describe("V0.2 workspace catalog with real PostgreSQL", () => {
     expect(current).toMatchObject({
       id: original.id,
       revision: 2,
+      lifecycleRevision: 1,
       schemaVersion: 1,
       definition: changed,
       createdAt: original.createdAt,
@@ -374,7 +376,12 @@ describe("V0.2 workspace catalog with real PostgreSQL", () => {
     const { teamId, cookie } = await bootstrap();
     const created = await create(teamId, cookie);
     const id = created.json().workspace.id;
-    const payload = { revision: 1, schemaVersion: 1, definition };
+    const payload = {
+      revision: 1,
+      lifecycleRevision: 1,
+      schemaVersion: 1,
+      definition,
+    };
     for (const invalid of [
       { origin: "https://evil.example" },
       { origin: "http://127.0.0.1:5173.evil.example" },

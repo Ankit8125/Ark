@@ -1,3 +1,4 @@
+import type { CatalogStatus, ResourceLifecycleRequest } from "@ark/contracts";
 import {
   AgentDefinitionSchema,
   AgentListResponseSchema,
@@ -36,8 +37,9 @@ export class AgentService {
     token: string | undefined,
     teamId: string,
     cursor?: string,
+    status: CatalogStatus = "active",
   ): Promise<AgentListResponse> {
-    const page = await this.catalog.list(token, teamId, cursor);
+    const page = await this.catalog.list(token, teamId, cursor, status);
     return AgentListResponseSchema.parse({
       agents: page.resources,
       nextCursor: page.nextCursor,
@@ -77,6 +79,16 @@ export class AgentService {
     input: RestoreResourceRequest,
   ): Promise<Agent> {
     return this.catalog.restore(token, teamId, resourceId, input);
+  }
+
+  async setArchived(
+    token: string | undefined,
+    teamId: string,
+    resourceId: string,
+    input: ResourceLifecycleRequest,
+    archived: boolean,
+  ): Promise<Agent> {
+    return this.catalog.setArchived(token, teamId, resourceId, input, archived);
   }
 
   async create(

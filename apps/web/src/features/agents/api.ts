@@ -1,11 +1,16 @@
 import {
   AgentListResponseSchema,
   AgentResponseSchema,
+  type CatalogStatus,
   type CreateAgentRequest,
   type UpdateAgentRequest,
 } from "@ark/contracts";
 import { requestJson } from "../../api";
 import { catalogHistoryApi } from "../catalog/history-api";
+import {
+  catalogLifecycleApi,
+  catalogListQuery,
+} from "../catalog/lifecycle-api";
 
 function collection(teamId: string) {
   return `/api/teams/${encodeURIComponent(teamId)}/agents`;
@@ -22,13 +27,25 @@ function agentResponse(teamId: string, id: string) {
 }
 export const agentApi = {
   ...catalogHistoryApi("agents", agentResponse),
-  list: (teamId: string, cursor?: string, signal?: AbortSignal) =>
+  ...catalogLifecycleApi("agents", agentResponse),
+  list: (
+    teamId: string,
+    cursor?: string,
+    signal?: AbortSignal,
+    status: CatalogStatus = "active",
+  ) =>
     requestJson(
-      `${collection(teamId)}${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
+      `${collection(teamId)}${catalogListQuery(status, cursor)}`,
       {
         parse(value: unknown) {
           const result = AgentListResponseSchema.parse(value);
-          if (result.agents.some((agent) => agent.teamId !== teamId))
+          if (
+            result.agents.some(
+              (agent) =>
+                agent.teamId !== teamId ||
+                (agent.archivedAt !== null) !== (status === "archived"),
+            )
+          )
             throw new Error("Unexpected agent context");
           return result;
         },

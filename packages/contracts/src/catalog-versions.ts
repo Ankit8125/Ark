@@ -1,3 +1,4 @@
+import { LifecycleRevisionSchema } from "./catalog-lifecycle.js";
 import { z } from "zod";
 
 // Both identities are required: a valid version UUID alone does not prove that
@@ -39,6 +40,7 @@ export const ResourceVersionListQuerySchema = z.strictObject({
 export const RestoreResourceRequestSchema = z.strictObject({
   versionId: z.uuid().toLowerCase(),
   revision: z.number().int().min(1).max(2_147_483_646),
+  lifecycleRevision: LifecycleRevisionSchema,
 });
 export type ResourceVersionReference = z.infer<
   typeof ResourceVersionReferenceSchema

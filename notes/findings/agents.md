@@ -1,6 +1,6 @@
 # Agent catalog findings
 
-Recorded 2026-09-27. [Findings index](README.md)
+Recorded 2026-09-27; updated 2026-10-04. [Findings index](README.md)
 
 ## Contract and intentional limits
 
@@ -18,27 +18,29 @@ The second catalog kind justifies sharing the transaction and request-recovery m
 
 All active explicit team members can read. Admins/developers can write. Organization ownership alone is insufficient. Reads and writes must match organization, team, ID, and kind. Looking up an Agent through a Workspace route, or vice versa, returns 404. Creation ID collisions across kinds return generic `ID_CONFLICT`, not the other record's content.
 
-Each mutation reauthorizes inside its transaction, locks the relevant identity/membership rows, and atomically commits current revision, immutable snapshot, and audit. Audits contain resource ID and revision, never instructions or preferences. Runtime privileges cannot update/delete snapshots or audit events. These safeguards do not implement RLS or constrain the migration administrator.
+Each mutation reauthorizes inside its transaction and locks the relevant identity/membership rows. Creation, edits, and restore atomically commit current revision, immutable snapshot, and audit. Archive/unarchive commits resource metadata, its separate lifecycle counter, and an audit while preserving snapshots. Audits contain resource ID and revision counters, never instructions or preferences. Runtime privileges cannot update/delete snapshots or audit events. These safeguards do not implement RLS or constrain the migration administrator.
 
 Concrete response-schema parsing also runs inside the transaction. Moving it into a wrapper after commit could report a failed save while retaining its writes. The integration suite injects a fixture-only persistence incompatibility and verifies that response validation failure rolls back creation and editing completely.
 
 ## HTTP and recovery contract
 
-| Method and path                          | Result                                                                      |
-| ---------------------------------------- | --------------------------------------------------------------------------- |
-| `GET /api/teams/:teamId/agents`          | Up to 50 summaries and a nullable UUID cursor                               |
-| `GET /api/teams/:teamId/agents/:agentId` | Complete current definition and version metadata                            |
-| `POST /api/teams/:teamId/agents`         | Client UUID, schema version 1, full definition; 201 or identical replay 200 |
-| `PUT /api/teams/:teamId/agents/:agentId` | Expected revision, schema version 1, complete replacement; 200              |
+| Method and path                          | Result                                                                            |
+| ---------------------------------------- | --------------------------------------------------------------------------------- |
+| `GET /api/teams/:teamId/agents`          | Up to 50 summaries and a nullable UUID cursor; `status=active\|archived`          |
+| `GET /api/teams/:teamId/agents/:agentId` | Complete current definition and version metadata                                  |
+| `POST /api/teams/:teamId/agents`         | Client UUID, schema version 1, full definition; 201 or identical replay 200       |
+| `PUT /api/teams/:teamId/agents/:agentId` | Expected content/lifecycle revisions, schema version 1, complete replacement; 200 |
 
-Pagination uses UUID keyset order. Summaries omit instructions and preferences. Identical creation replay is allowed only for the same team/kind at revision 1 with identical normalized content. Changed content, team, kind, or revision returns 409. A stale update returns `REVISION_CONFLICT`; a duplicate Agent name returns `NAME_CONFLICT`. No automatic mutation retries occur.
+Pagination uses UUID keyset order and filters active or archived records before paging; active is the default. Summaries omit instructions and preferences. Identical creation replay is allowed only for the same team/kind at revision 1 with identical normalized content and no lifecycle transition. Changed content, team, kind, revision, or lifecycle state returns 409. A stale update returns `REVISION_CONFLICT`; a duplicate Agent name returns `NAME_CONFLICT`, including names held by archived records. No automatic mutation retries occur.
 
-Agent mutations allow 128 KiB so the maximum supported definition fits even with JSON-escaped control characters. Workspace mutations retain 64 KiB; identity retains 16 KiB. Shared Host/Origin/JSON/cookie guards remain in force. Errors and logging must not include definition contents, credentials, SQL, or raw exception messages.
+[Archive/unarchive](catalog-archive.md) uses explicit POST actions with expected content and lifecycle revisions. Archived Agents and their history remain readable but cannot be edited or restored. An active Flow's current definition blocks archiving its pinned Agent.
+
+Agent create/update requests allow 128 KiB so the maximum supported definition fits even with JSON-escaped control characters. Workspace create/update requests retain 64 KiB; identity retains 16 KiB. Restore/archive/unarchive requests allow 1 KiB. Shared Host/Origin/JSON/cookie guards remain in force. Errors and logging must not include definition contents, credentials, SQL, or raw exception messages.
 
 The browser shares versioned-editor recovery and dirty-navigation protection between catalog kinds. Supported fields are explicit controls; no dynamic form engine or new dependency is required. Read-only role changes, team-refresh uncertainty, lost responses, and stale revisions retain the same recovery rules as Workspaces.
 
 ## Verification and remaining work
 
-The [dated implementation record](../progress/2026-09-27-02-agents.md) records the original automated checks, browser evidence, and limits. Workspaces and identity remain regression coverage. The verified [Flow increment](flows.md) adds separately authorized immutable-version reads and same-team pinned references. [History/restore](catalog-history.md) extends all three catalogs. Archive/delete, templates, sharing/grants, and execution remain unimplemented. V0.2 is not complete from catalog editing alone.
+The [dated implementation record](../progress/2026-09-27-02-agents.md) records the original automated checks, browser evidence, and limits. Workspaces and identity remain regression coverage. The verified [Flow increment](flows.md) adds separately authorized immutable-version reads and same-team pinned references. [History/restore](catalog-history.md) and [archive/unarchive](catalog-archive.md) extend all three catalogs. Deletion, templates, sharing/grants, and execution remain unimplemented. V0.2 remains incomplete while templates are pending.
 
 Official references checked for this increment: [PostgreSQL 17 constraint changes](https://www.postgresql.org/docs/17/sql-altertable.html), [Fastify route body limits](https://fastify.dev/docs/latest/Reference/Routes/), and [Zod strict objects and refinements](https://zod.dev/api). Existing React/Vite dependencies and their lockfile are unchanged.

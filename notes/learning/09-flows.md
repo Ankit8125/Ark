@@ -1,6 +1,6 @@
 # Ordered Flows and pinned versions
 
-Updated 2026-10-01. [Learning index](README.md)
+Updated 2026-10-04. [Learning index](README.md)
 
 The Flow catalog has passed automated checks and a real-browser acceptance walkthrough; the [completion record](../progress/2026-10-01-01-flow-completion.md) records the evidence and limits. This guide describes its implemented configuration contract. Execution remains a later milestone.
 
@@ -36,7 +36,7 @@ Port names use lowercase letters, digits, and underscores, starting with a lette
 
 If Plan uses Agent revision 1 and you later save Agent revision 2, the Flow continues to point to revision 1. The pair of resource ID and immutable version ID is authoritative. Selecting a newer available revision is an explicit Flow edit, which produces a new Flow revision on save. A historical dependency read returns the historical definition, including its historical name.
 
-An inaccessible, missing, wrong-kind, or incompatible dependency cannot be used just because its UUID is known. Server checks remain authoritative even when a browser has stale options. Current sharing is deliberately restricted to the same team; cross-team grants are future work.
+An inaccessible, archived, missing, wrong-kind, or incompatible dependency cannot be used just because its UUID is known. Server checks remain authoritative even when a browser has stale options. Current sharing is deliberately restricted to the same team; cross-team grants are future work.
 
 ## Editing and recovery
 
@@ -46,7 +46,13 @@ All active team members can read. Admins and developers can save. Failed request
 
 [Catalog history](10-catalog-history.md) lets you inspect an earlier Flow and restore it as a new revision. Restore keeps that snapshot's exact dependency pins and checks their current availability before saving.
 
-After pulling this increment, apply its new migration explicitly and start both services:
+## Archive and unarchive
+
+**Archive flow** moves the recipe out of the active catalog while preserving its name, saved revision, exact pins, and history. Choose **Archived** in the catalog filter to find it again. Its form and history remain read-only until unarchived. An archived Flow stops blocking archive of its Workspace and Agents; unarchiving checks that those original dependencies are active and supported again. It does not switch to newer versions. See the [archive guide](11-catalog-archive.md) for confirmation and stale-draft recovery. Templates, deletion, and execution remain future work.
+
+## Apply migrations and start
+
+After pulling catalog changes, apply missing migrations explicitly and start both services. Archive adds migration `005_catalog_archive.sql`:
 
 ```powershell
 pnpm.cmd db:up

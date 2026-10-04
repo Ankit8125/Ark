@@ -1,7 +1,7 @@
-import type { Team } from "@ark/contracts";
+import type { CatalogStatus, Team } from "@ark/contracts";
 import { LoaderCircle, Plus, RefreshCw, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ApiRequestError, errorMessage } from "../../api";
 import common from "../../App.module.css";
 import { canEditCatalog } from "./permissions";
@@ -13,9 +13,34 @@ type Summary = {
   revision: number;
   schemaVersion: number;
   updatedAt: string;
+  archivedAt: string | null;
+  lifecycleRevision: number;
 };
 export type CatalogPage = { items: Summary[]; nextCursor: string | null };
-export function CatalogList({
+export function CatalogList(
+  props: Omit<
+    Parameters<typeof CatalogListContent>[0],
+    "status" | "onStatusChange"
+  >,
+) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const status =
+    searchParams.get("status") === "archived" ? "archived" : "active";
+  return (
+    <CatalogListContent
+      {...props}
+      key={`${props.team.id}:${status}`}
+      status={status}
+      onStatusChange={(next) => {
+        setSearchParams(next === "archived" ? { status: next } : {});
+      }}
+    />
+  );
+}
+
+// A team/filter change remounts the page and cancels its requests, so an older
+// page cannot be appended to a different catalog or lifecycle filter.
+function CatalogListContent({
   team,
   onExpired,
   kind,
@@ -25,6 +50,8 @@ export function CatalogList({
   createDescription,
   icon: Icon,
   loadPage,
+  status,
+  onStatusChange,
 }: {
   team: Team;
   onExpired: () => void;
@@ -34,10 +61,13 @@ export function CatalogList({
   description: string;
   createDescription: string;
   icon: LucideIcon;
+  status: CatalogStatus;
+  onStatusChange: (status: CatalogStatus) => void;
   loadPage: (
     teamId: string,
     cursor?: string,
     signal?: AbortSignal,
+    status?: CatalogStatus,
   ) => Promise<CatalogPage>;
 }) {
   const [page, setPage] = useState<CatalogPage | null>(null);
@@ -49,7 +79,7 @@ export function CatalogList({
   useEffect(() => {
     const controller = new AbortController();
     request.current = controller;
-    void loadPage(team.id, undefined, controller.signal)
+    void loadPage(team.id, undefined, controller.signal, status)
       .then((result) => {
         if (!controller.signal.aborted) setPage(result);
       })
@@ -66,7 +96,7 @@ export function CatalogList({
       controller.abort();
       request.current?.abort();
     };
-  }, [team.id, attempt, onExpired, loadPage]);
+  }, [team.id, attempt, onExpired, loadPage, status]);
 
   async function more() {
     if (!page?.nextCursor || loadingMore.current) return;
@@ -76,7 +106,12 @@ export function CatalogList({
     setLoading(true);
     setMessage("");
     try {
-      const next = await loadPage(team.id, page.nextCursor, controller.signal);
+      const next = await loadPage(
+        team.id,
+        page.nextCursor,
+        controller.signal,
+        status,
+      );
       if (!controller.signal.aborted)
         setPage(
           (current) =>
@@ -119,6 +154,21 @@ export function CatalogList({
           </Link>
         )}
       </div>
+      <div className={`${styles.field} ${styles.catalogFilter}`}>
+        <label htmlFor="catalog-status">Show configurations</label>
+        <select
+          id="catalog-status"
+          value={status}
+          onChange={(event) =>
+            onStatusChange(
+              event.target.value === "archived" ? "archived" : "active",
+            )
+          }
+        >
+          <option value="active">Active</option>
+          <option value="archived">Archived</option>
+        </select>
+      </div>
       {message && (
         <div className={styles.message} role="alert">
           <p>{message}</p>
@@ -150,11 +200,17 @@ export function CatalogList({
       ) : page?.items.length === 0 ? (
         <section className={common.statusPanel}>
           <Icon size={28} aria-hidden="true" />
-          <h2>No {plural} yet</h2>
+          <h2>
+            {status === "archived"
+              ? `No archived ${plural}`
+              : `No ${plural} yet`}
+          </h2>
           <p>
-            {canEditCatalog(team)
-              ? createDescription
-              : `A team admin or developer can create your first ${kind}.`}
+            {status === "archived"
+              ? `Archived ${plural} appear here. Their definitions and history remain available.`
+              : canEditCatalog(team)
+                ? createDescription
+                : `A team admin or developer can create your first ${kind}.`}
           </p>
         </section>
       ) : (
@@ -176,6 +232,7 @@ export function CatalogList({
                       <strong>{item.name}</strong>
                       <span>
                         Revision {item.revision} · Schema {item.schemaVersion}
+                        {item.archivedAt ? " · Archived" : ""}
                       </span>
                     </span>
                     <time dateTime={item.updatedAt}>

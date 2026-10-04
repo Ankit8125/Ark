@@ -1,3 +1,7 @@
+import {
+  CatalogStatusSchema,
+  LifecycleRevisionSchema,
+} from "./catalog-lifecycle.js";
 import { z } from "zod";
 import { CatalogTextSchema as text } from "./catalog-text.js";
 import { ResourceVersionReferenceSchema } from "./catalog-versions.js";
@@ -128,6 +132,7 @@ export const CreateFlowRequestSchema = z.strictObject({
 });
 export const UpdateFlowRequestSchema = z.strictObject({
   revision: z.number().int().min(1).max(2_147_483_646),
+  lifecycleRevision: LifecycleRevisionSchema,
   schemaVersion: z.literal(1),
   definition: FlowDefinitionSchema,
 });
@@ -140,6 +145,7 @@ export const FlowVersionParamsSchema = FlowParamsSchema.extend({
 });
 export const FlowListQuerySchema = z.strictObject({
   cursor: z.uuid().optional(),
+  status: CatalogStatusSchema.default("active"),
 });
 export const FlowSummarySchema = z.strictObject({
   id: z.uuid(),
@@ -149,6 +155,8 @@ export const FlowSummarySchema = z.strictObject({
   versionId: z.uuid(),
   schemaVersion: z.number().int().positive(),
   updatedAt: z.iso.datetime(),
+  archivedAt: z.iso.datetime().nullable(),
+  lifecycleRevision: LifecycleRevisionSchema,
 });
 export const FlowSchema = FlowSummarySchema.extend({
   definition: z.unknown(),

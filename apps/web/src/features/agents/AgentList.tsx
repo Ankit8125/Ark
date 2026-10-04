@@ -1,10 +1,15 @@
-import type { Team } from "@ark/contracts";
+import type { CatalogStatus, Team } from "@ark/contracts";
 import { Bot } from "lucide-react";
 import { CatalogList } from "../catalog/CatalogList";
 import { agentApi } from "./api";
 
-async function loadPage(teamId: string, cursor?: string, signal?: AbortSignal) {
-  const result = await agentApi.list(teamId, cursor, signal);
+async function loadPage(
+  teamId: string,
+  cursor?: string,
+  signal?: AbortSignal,
+  status: CatalogStatus = "active",
+) {
+  const result = await agentApi.list(teamId, cursor, signal, status);
   return { items: result.agents, nextCursor: result.nextCursor };
 }
 export function AgentList(props: { team: Team; onExpired: () => void }) {

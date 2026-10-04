@@ -58,6 +58,8 @@ function saved(overrides: Partial<Workspace> = {}): Workspace {
     id,
     teamId: team.id,
     name: definition.name,
+    archivedAt: null,
+    lifecycleRevision: 1,
     revision: 2,
     versionId: headVersionId,
     schemaVersion: 1,
@@ -143,6 +145,12 @@ describe("catalog revision history and restore recovery", () => {
       saved({ revision: 3, definition: oldDefinition }),
     );
     vi.spyOn(workspaceApi, "update").mockResolvedValue(saved({ revision: 3 }));
+    vi.spyOn(workspaceApi, "archive").mockResolvedValue(
+      saved({ archivedAt: timestamp, lifecycleRevision: 2 }),
+    );
+    vi.spyOn(workspaceApi, "unarchive").mockResolvedValue(
+      saved({ lifecycleRevision: 3 }),
+    );
     vi.spyOn(window, "confirm").mockReturnValue(false);
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
       callback(0);
@@ -266,7 +274,7 @@ describe("catalog revision history and restore recovery", () => {
     expect(vi.mocked(workspaceApi.restore).mock.calls[0]?.slice(0, 3)).toEqual([
       team.id,
       id,
-      { versionId: oldVersionId, revision: 2 },
+      { versionId: oldVersionId, revision: 2, lifecycleRevision: 1 },
     ]);
     expect(input("description").value).toBe(oldDefinition.description);
     expect(input("actions.test").value).toBe(oldDefinition.actions.test);
@@ -631,6 +639,260 @@ describe("catalog revision history and restore recovery", () => {
       "Keep the draft after unexpected response",
     );
     expect(container.textContent).toContain("unexpected restored definition");
+    expect(container.textContent).toContain("Load latest");
+  });
+  it("cancels archive without changing the draft and confirms a read-only archived record", async () => {
+    await open();
+    await fill("description", "My unsaved configuration");
+    await click("Archive workspace");
+    expect(workspaceApi.archive).not.toHaveBeenCalled();
+    expect(input("description").value).toBe("My unsaved configuration");
+    vi.mocked(window.confirm).mockReturnValue(true);
+    await click("Archive workspace");
+    expect(window.confirm).toHaveBeenLastCalledWith(
+      expect.stringContaining("unsaved draft will be discarded"),
+    );
+    expect(workspaceApi.archive).toHaveBeenCalledWith(
+      team.id,
+      id,
+      { revision: 2, lifecycleRevision: 1 },
+      expect.any(AbortSignal),
+    );
+    expect(input("description").value).toBe(definition.description);
+    expect(input("description").readOnly).toBe(true);
+    expect(container.textContent).toContain("Revision 2 · Archived");
+    expect(container.textContent).not.toContain("Save changes");
+    await browse();
+    expect(container.textContent).toContain("Earlier saved definition");
+    expect(container.textContent).not.toContain("Restore revision 1");
+    await click("Unarchive workspace");
+    expect(workspaceApi.unarchive).toHaveBeenCalledWith(
+      team.id,
+      id,
+      { revision: 2, lifecycleRevision: 2 },
+      expect.any(AbortSignal),
+    );
+    expect(input("description").readOnly).toBe(false);
+    expect(container.textContent).toContain("Saved revision 2 is unchanged");
+    await act(() =>
+      container
+        .querySelector("form")!
+        .dispatchEvent(
+          new Event("submit", { bubbles: true, cancelable: true }),
+        ),
+    );
+    expect(vi.mocked(workspaceApi.update).mock.calls[0]?.[2]).toMatchObject({
+      revision: 2,
+      lifecycleRevision: 3,
+    });
+  });
+
+  it("loads an archived record read-only and cancels unarchive", async () => {
+    vi.mocked(workspaceApi.get).mockResolvedValueOnce(
+      saved({ archivedAt: timestamp, lifecycleRevision: 4 }),
+    );
+    await open();
+    expect(input("name").readOnly).toBe(true);
+    await click("Unarchive workspace");
+    expect(workspaceApi.unarchive).not.toHaveBeenCalled();
+    expect(container.textContent).not.toContain("Save changes");
+    await browse();
+    expect(container.textContent).not.toContain("Restore revision 1");
+  });
+
+  it("clears failed restore recovery after archive replaces the draft", async () => {
+    vi.mocked(workspaceApi.restore).mockRejectedValueOnce(
+      new ApiRequestError(0, "OFFLINE", "Cannot reach Ark."),
+    );
+    await open();
+    await fill("description", "Draft kept after failed restore");
+    await browse();
+    vi.mocked(window.confirm).mockReturnValue(true);
+    await click("Restore revision 1");
+    expect(input("description").value).toBe("Draft kept after failed restore");
+    expect(container.textContent).toContain("If the restore response was lost");
+    await click("Archive workspace");
+    expect(input("description").value).toBe(definition.description);
+    expect(input("description").readOnly).toBe(true);
+    expect(container.textContent).not.toContain(
+      "If the restore response was lost",
+    );
+    expect(container.textContent).not.toContain(
+      "Your draft is still displayed",
+    );
+  });
+
+  it("keeps the draft after an offline archive and never retries automatically", async () => {
+    vi.mocked(workspaceApi.archive).mockRejectedValueOnce(
+      new ApiRequestError(0, "OFFLINE", "Cannot reach Ark."),
+    );
+    await open();
+    await fill("description", "Retain me while offline");
+    vi.mocked(window.confirm).mockReturnValue(true);
+    await click("Archive workspace");
+    expect(input("description").value).toBe("Retain me while offline");
+    expect(container.textContent).toContain("Cannot reach Ark.");
+    expect(container.textContent).toContain(
+      "load latest to check the saved status",
+    );
+    expect(workspaceApi.archive).toHaveBeenCalledTimes(1);
+    await click("Archive workspace");
+    expect(workspaceApi.archive).toHaveBeenCalledTimes(2);
+    expect(input("description").readOnly).toBe(true);
+  });
+
+  it.each(["REVISION_CONFLICT", "LIFECYCLE_CONFLICT", "RESOURCE_ARCHIVED"])(
+    "requires explicit recovery from %s before another lifecycle mutation",
+    async (code) => {
+      vi.mocked(workspaceApi.archive).mockRejectedValueOnce(
+        new ApiRequestError(409, code, "This workspace changed. Load latest."),
+      );
+      await open();
+      await fill("description", "Keep my stale draft");
+      vi.mocked(window.confirm).mockReturnValue(true);
+      await click("Archive workspace");
+      expect(input("description").value).toBe("Keep my stale draft");
+      expect((button("Archive workspace") as HTMLButtonElement).disabled).toBe(
+        true,
+      );
+      expect((button("Save changes") as HTMLButtonElement).disabled).toBe(true);
+      vi.mocked(window.confirm).mockReturnValue(false);
+      await click("Load latest");
+      expect(workspaceApi.get).toHaveBeenCalledTimes(1);
+      vi.mocked(workspaceApi.get).mockResolvedValueOnce(
+        saved({ archivedAt: timestamp, lifecycleRevision: 2 }),
+      );
+      vi.mocked(window.confirm).mockReturnValue(true);
+      await click("Load latest");
+      expect(input("description").value).toBe(definition.description);
+      expect(input("description").readOnly).toBe(true);
+      expect(workspaceApi.archive).toHaveBeenCalledTimes(1);
+      expect(container.textContent).toContain("Unarchive workspace");
+    },
+  );
+
+  it.each([
+    [
+      "RESOURCE_IN_USE",
+      "An active Flow uses this resource. Update or archive that Flow first.",
+    ],
+    [
+      "UNVERIFIABLE_DEPENDENCIES",
+      "An active Flow has an unsupported definition. Its dependencies must be verified first.",
+    ],
+  ])("explains %s and retains unsaved fields", async (code, explanation) => {
+    vi.mocked(workspaceApi.archive).mockRejectedValueOnce(
+      new ApiRequestError(409, code, explanation),
+    );
+    await open();
+    await fill("description", "Keep this draft");
+    vi.mocked(window.confirm).mockReturnValue(true);
+    await click("Archive workspace");
+    expect(container.textContent).toContain(explanation);
+    expect(input("description").value).toBe("Keep this draft");
+    expect(input("description").readOnly).toBe(false);
+    expect(workspaceApi.archive).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["viewer", "reviewer"] as const)(
+    "keeps archived history readable for %s without lifecycle controls",
+    async (role) => {
+      vi.mocked(workspaceApi.get).mockResolvedValueOnce(
+        saved({ archivedAt: timestamp, lifecycleRevision: 2 }),
+      );
+      await open();
+      await act(() => changeTeam({ ...team, role }));
+      expect(container.textContent).not.toContain("Unarchive workspace");
+      expect(container.textContent).not.toContain("Archive workspace");
+      await browse();
+      expect(container.textContent).toContain("Earlier saved definition");
+      expect(container.textContent).not.toContain("Restore revision 1");
+    },
+  );
+
+  it("keeps unsupported archived definitions fully read-only", async () => {
+    vi.mocked(workspaceApi.get).mockResolvedValueOnce(
+      saved({
+        archivedAt: timestamp,
+        lifecycleRevision: 2,
+        schemaVersion: 2,
+        definition: { future: "Preserve all fields" },
+      }),
+    );
+    await open();
+    expect(container.textContent).toContain("Preserve all fields");
+    expect(container.textContent).not.toContain("Unarchive workspace");
+    await browse();
+    expect(container.textContent).not.toContain("Restore revision 1");
+  });
+
+  it("disables writes after lifecycle authorization is revoked", async () => {
+    vi.mocked(workspaceApi.archive).mockRejectedValueOnce(
+      new ApiRequestError(
+        403,
+        "FORBIDDEN",
+        "Current membership does not allow this.",
+      ),
+    );
+    await open();
+    await fill("description", "Preserved after revocation");
+    vi.mocked(window.confirm).mockReturnValue(true);
+    await click("Archive workspace");
+    expect(input("description").value).toBe("Preserved after revocation");
+    expect(input("description").readOnly).toBe(true);
+    expect(container.textContent).not.toContain("Archive workspace");
+    expect(container.textContent).not.toContain("Save changes");
+  });
+
+  it("ignores a delayed archive response after switching teams", async () => {
+    let complete!: () => void;
+    let signal: AbortSignal | undefined;
+    const pending = new Promise<void>((resolve) => {
+      complete = resolve;
+    });
+    vi.mocked(workspaceApi.archive).mockImplementationOnce(
+      async (_team, _id, _input, requestSignal) => {
+        signal = requestSignal;
+        await pending;
+        return saved({ archivedAt: timestamp, lifecycleRevision: 2 });
+      },
+    );
+    await open();
+    vi.mocked(window.confirm).mockReturnValue(true);
+    await click("Archive workspace");
+    expect((button("Archiving…") as HTMLButtonElement).disabled).toBe(true);
+    const otherTeam = {
+      ...team,
+      id: "52847e97-46bf-467a-b642-7c670f2855a6",
+      name: "Other team",
+    };
+    vi.mocked(workspaceApi.get).mockResolvedValueOnce(
+      saved({
+        teamId: otherTeam.id,
+        definition: { ...definition, description: "Other team record" },
+      }),
+    );
+    await act(() => changeTeam(otherTeam));
+    expect(signal?.aborted).toBe(true);
+    await act(() => complete());
+    expect(input("description").value).toBe("Other team record");
+    expect(input("description").readOnly).toBe(false);
+    expect(container.textContent).toContain("Archive workspace");
+    expect(container.textContent).not.toContain("Unarchive workspace");
+  });
+
+  it("keeps the draft if a lifecycle response has an unexpected revision", async () => {
+    vi.mocked(workspaceApi.archive).mockResolvedValueOnce(
+      saved({ archivedAt: timestamp, lifecycleRevision: 2, revision: 3 }),
+    );
+    await open();
+    await fill("description", "Never replace with an invalid response");
+    vi.mocked(window.confirm).mockReturnValue(true);
+    await click("Archive workspace");
+    expect(input("description").value).toBe(
+      "Never replace with an invalid response",
+    );
+    expect(container.textContent).toContain("unexpected archive result");
     expect(container.textContent).toContain("Load latest");
   });
 });

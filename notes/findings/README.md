@@ -14,10 +14,11 @@ Keep facts and decisions in focused files; distinguish verified behavior from in
 | [Agent catalog](agents.md)                        | Stub configuration, kind isolation, shared versioning, text bounds, and scope            |
 | [Ordered Flows](flows.md)                         | Stage/port contract, pinned dependency boundaries, and acceptance limits                 |
 | [Catalog history](catalog-history.md)             | History pagination, fresh restore revisions, source audit, and current dependency checks |
+| [Catalog archive](catalog-archive.md)             | Lifecycle counters, visibility, inbound Flow checks, and acceptance contract             |
 
 ## Next decisions
 
-1. Add archive as its own bounded increment with explicit inbound Flow dependency and unarchive behavior. History/restore acceptance and cleanup are recorded in the [progress entry](../progress/2026-10-02-01-catalog-history.md). Templates remain separate.
+1. Define the first bounded template increment, including ownership, editable copies, and Flow dependency pins. Archive/unarchive acceptance and cleanup are recorded in the [completion entry](../progress/2026-10-04-01-archive-completion.md).
 2. Decide when to add automated browser regression tests; current browser evidence is a CLI walkthrough.
 3. Design invitations, administration, and password recovery before a team-usable release.
 4. Select recoverable OS-backed secret storage before real provider credentials.

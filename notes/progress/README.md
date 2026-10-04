@@ -1,23 +1,23 @@
 # Current progress
 
-Updated 2026-10-02 (Asia/Kolkata). Keep this page concise; detailed evidence belongs in dated records.
+Updated 2026-10-04 (Asia/Kolkata). Keep this page concise; detailed evidence belongs in dated records.
 
 ## Current checkpoint
 
-**Verified locally: V0.1 identity plus V0.2 Workspace, Agent, and ordered Flow catalogs with history/restore.** All three catalogs support create/read/edit, history browsing, and restore as a new immutable revision; Flows pin exact dependency versions and revalidate them on restore. The [history acceptance record](2026-10-02-01-catalog-history.md) records completed automated/browser checks and fixture cleanup. V0.2 as a whole is not complete: archive and templates remain. Session execution, invitations, runners, and model calls remain future work.
+**Verified locally: V0.1 identity plus V0.2 Workspace, Agent, and ordered Flow catalogs with history/restore and archive/unarchive.** All three catalogs support immutable editing and restore, lifecycle changes, and active/archived filtering. Archive retains definitions, pins, names, and history; active Flow references block dependency archive. Separate lifecycle counters reject stale mutations. The [archive acceptance record](2026-10-04-01-archive-completion.md) records completed automated/browser checks and fixture cleanup. V0.2 remains incomplete: templates are next. Session execution, invitations, runners, and model calls remain future work.
 
 | Area              | Evidence                                                                                                  |
 | ----------------- | --------------------------------------------------------------------------------------------------------- |
-| Database          | Migrations 001–004; history needs no migration; restricted ark_app checked on October 2                   |
-| Development setup | Zero users/resources at the October 2 read-only check; first-owner setup remains available                |
+| Database          | Migrations 001–005; restricted ark_app verified on October 4; existing data preserved                     |
+| Development setup | Zero users/resources/versions at the October 4 read-only check; first-owner setup remains available       |
 | Identity          | One-use atomic bootstrap, Argon2id, hashed opaque sessions, revocation checks                             |
 | Authorization     | Explicit membership, admin/developer catalog writes, kind/team isolation, locked checks, last-owner guard |
-| Automated tests   | 140 unit/DOM, 81 PostgreSQL integration, and 7 guard tests passed; run details recorded in checkpoint     |
-| UI                | History/restore, Flow pin retention, conflict/offline recovery, and desktop/mobile views verified         |
+| Automated tests   | 164 unit/DOM, 114 PostgreSQL integration, and 7 guard tests passed; run details recorded in checkpoint    |
+| UI                | Archive/filter/history, exact pin retention, stale/offline recovery, and desktop/mobile views verified    |
 | Tooling           | Production build, lint, and strict type checks passed                                                     |
 | Scope             | Loopback development; no production deployment or execution workflow                                      |
 
-The [latest verification record](2026-10-02-01-catalog-history.md) explains the automated checks, browser acceptance, resolved approval interruption, and fixture cleanup. The [history guide](../learning/10-catalog-history.md) explains safe restore and recovery. The [Flow](../learning/09-flows.md), [Agent](../learning/08-agents.md), and [Workspace](../learning/07-workspaces.md) guides explain fields, commands, versions, and conflicts. The [architecture guide](../learning/06-project-architecture.md) contains the updated ASCII folder tree and catalog boundaries.
+The [latest verification record](2026-10-04-01-archive-completion.md) explains automated checks, browser acceptance, resumption, and fixture cleanup. The [archive guide](../learning/11-catalog-archive.md) explains dependencies and lifecycle recovery; the [history guide](../learning/10-catalog-history.md) explains restore. The [Flow](../learning/09-flows.md), [Agent](../learning/08-agents.md), and [Workspace](../learning/07-workspaces.md) guides explain fields, commands, and conflicts. The [architecture guide](../learning/06-project-architecture.md) contains the updated folder tree and catalog boundaries.
 
 The [tooling verification](2026-09-26-04-supported-react-tooling.md) confirms Vite rather than Create React App and records the requirement to avoid deprecated/end-of-life technology. The catalog increments add no dependencies.
 
@@ -39,11 +39,13 @@ The original V0.1 browser verification used separate test ports and a separate d
 | 2026-09-30 / 01 | [Flow verification checkpoint and remaining work](2026-09-30-01-flow-verification.md)          |
 | 2026-10-01 / 01 | [Flow acceptance completed](2026-10-01-01-flow-completion.md)                                  |
 | 2026-10-02 / 01 | [History/restore implementation and verification checkpoint](2026-10-02-01-catalog-history.md) |
+| 2026-10-03 / 01 | [Catalog archive and unarchive](2026-10-03-01-catalog-archive.md)                              |
+| 2026-10-04 / 01 | [Archive acceptance completed](2026-10-04-01-archive-completion.md)                            |
 
 ## Synchronization
 
-The last published checkpoint includes Flow implementation commit `3374c32e02833c5de190c8e38c87ca7781fd4349` and documentation commit `a866b44c55f8c6abb0f001d8d3e131ee512d574a`. History/restore is a local increment based on that checkpoint; no remote synchronization has been performed in this step. See the [history record](2026-10-02-01-catalog-history.md) and local Git log for its commit and review evidence.
+History/restore commit `73db9427f6966b357448839ef05f349fd0688c1b` was pushed to `origin/main` on October 3, and remote HEAD matched local HEAD. The verified archive increment remains local; its [completion record](2026-10-04-01-archive-completion.md) is included in the feature commit. No archive push has been requested.
 
 ## Next bounded step
 
-Add archive with explicit inbound Flow dependency and unarchive behavior, defining acceptance cases before changing visibility. Templates and deletion remain separate. Runner execution and real model calls remain later milestones.
+Define the first bounded template increment, including ownership, editable copies, and Flow dependency pin rules. Establish acceptance cases before implementation. Deletion, runner execution, and real model calls remain separate milestones.

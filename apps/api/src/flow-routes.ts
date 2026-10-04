@@ -1,3 +1,4 @@
+import { ResourceLifecycleRequestSchema } from "@ark/contracts";
 import {
   CreateFlowRequestSchema,
   FlowListQuerySchema,
@@ -25,8 +26,8 @@ export function registerFlowRoutes(
 ): void {
   app.get(collectionPath, async (request) => {
     const { teamId } = parseRequest(teamParams, request.params);
-    const { cursor } = parseRequest(FlowListQuerySchema, request.query);
-    return flows.list(request.cookies.ark_session, teamId, cursor);
+    const { cursor, status } = parseRequest(FlowListQuerySchema, request.query);
+    return flows.list(request.cookies.ark_session, teamId, cursor, status);
   });
   app.get(detailPath, async (request) => {
     const { teamId, flowId } = parseRequest(FlowParamsSchema, request.params);
@@ -73,6 +74,31 @@ export function registerFlowRoutes(
       ),
     };
   });
+  for (const action of ["archive", "unarchive"] as const) {
+    app.post(
+      `${detailPath}/${action}`,
+      { bodyLimit: 1024 },
+      async (request) => {
+        const { teamId, flowId } = parseRequest(
+          FlowParamsSchema,
+          request.params,
+        );
+        const input = parseRequest(
+          ResourceLifecycleRequestSchema,
+          request.body,
+        );
+        return {
+          flow: await flows.setArchived(
+            request.cookies.ark_session,
+            teamId,
+            flowId,
+            input,
+            action === "archive",
+          ),
+        };
+      },
+    );
+  }
   app.post(collectionPath, mutationOptions, async (request, reply) => {
     const { teamId } = parseRequest(teamParams, request.params);
     const input = parseRequest(CreateFlowRequestSchema, request.body);

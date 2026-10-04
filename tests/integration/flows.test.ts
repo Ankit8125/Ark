@@ -97,7 +97,7 @@ const update = (
   mutate(
     "PUT",
     detailPath(teamId, id),
-    { revision, schemaVersion: 1, definition },
+    { revision, lifecycleRevision: 1, schemaVersion: 1, definition },
     cookie,
   );
 const pin = (resource: {
@@ -271,6 +271,7 @@ describe("V0.2 ordered flows with real PostgreSQL", () => {
       }),
       await mutate("PUT", detailPath(teamId, id), {
         revision: 1,
+        lifecycleRevision: 1,
         schemaVersion: 1,
         definition,
       }),
@@ -327,6 +328,7 @@ describe("V0.2 ordered flows with real PostgreSQL", () => {
     expect(original).toMatchObject({
       teamId,
       revision: 1,
+      lifecycleRevision: 1,
       schemaVersion: 1,
       definition,
     });
@@ -340,6 +342,7 @@ describe("V0.2 ordered flows with real PostgreSQL", () => {
       `/api/teams/${teamId}/workspaces/${workspace.id}`,
       {
         revision: 1,
+        lifecycleRevision: 1,
         schemaVersion: 1,
         definition: {
           ...workspaceDefinition,
@@ -355,6 +358,7 @@ describe("V0.2 ordered flows with real PostgreSQL", () => {
       `/api/teams/${teamId}/agents/${agent.id}`,
       {
         revision: 1,
+        lifecycleRevision: 1,
         schemaVersion: 1,
         definition: {
           ...agentDefinition,
@@ -412,6 +416,7 @@ describe("V0.2 ordered flows with real PostgreSQL", () => {
       `/api/teams/${teamId}/agents/${agent.id}`,
       {
         revision: 1,
+        lifecycleRevision: 1,
         schemaVersion: 1,
         definition: { ...agentDefinition, name: "New name" },
       },
@@ -437,6 +442,8 @@ describe("V0.2 ordered flows with real PostgreSQL", () => {
         definition: expected,
       });
       expect(version).not.toHaveProperty("name");
+      expect(version).not.toHaveProperty("lifecycleRevision");
+      expect(version).not.toHaveProperty("archivedAt");
       expect(
         (
           await get(
@@ -656,6 +663,7 @@ describe("V0.2 ordered flows with real PostgreSQL", () => {
       `/api/teams/${teamId}/agents/${agent.id}`,
       {
         revision: 1,
+        lifecycleRevision: 1,
         schemaVersion: 1,
         definition: { ...agentDefinition, instructions: "Latest instructions" },
       },
@@ -991,7 +999,12 @@ describe("V0.2 ordered flows with real PostgreSQL", () => {
             method: "PUT",
             url: detailPath(teamId, id),
             headers: { ...headers, cookie, ...invalid },
-            payload: { revision: 1, schemaVersion: 1, definition },
+            payload: {
+              revision: 1,
+              lifecycleRevision: 1,
+              schemaVersion: 1,
+              definition,
+            },
           })
         ).statusCode,
       ).toBe(403);
@@ -1004,6 +1017,7 @@ describe("V0.2 ordered flows with real PostgreSQL", () => {
           headers: { ...headers, cookie, "content-type": "text/plain" },
           payload: JSON.stringify({
             revision: 1,
+            lifecycleRevision: 1,
             schemaVersion: 1,
             definition,
           }),

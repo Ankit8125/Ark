@@ -1,3 +1,7 @@
+import {
+  CatalogStatusSchema,
+  LifecycleRevisionSchema,
+} from "./catalog-lifecycle.js";
 import { z } from "zod";
 import { CatalogTextSchema as text } from "./catalog-text.js";
 
@@ -43,6 +47,7 @@ export const CreateAgentRequestSchema = z.strictObject({
 });
 export const UpdateAgentRequestSchema = z.strictObject({
   revision: z.number().int().min(1).max(2_147_483_646),
+  lifecycleRevision: LifecycleRevisionSchema,
   schemaVersion: z.literal(1),
   definition: AgentDefinitionSchema,
 });
@@ -52,6 +57,7 @@ export const AgentParamsSchema = z.strictObject({
 });
 export const AgentListQuerySchema = z.strictObject({
   cursor: z.uuid().optional(),
+  status: CatalogStatusSchema.default("active"),
 });
 export const AgentVersionParamsSchema = AgentParamsSchema.extend({
   versionId: z.uuid(),
@@ -64,6 +70,8 @@ export const AgentSummarySchema = z.strictObject({
   versionId: z.uuid(),
   schemaVersion: z.number().int().positive(),
   updatedAt: z.iso.datetime(),
+  archivedAt: z.iso.datetime().nullable(),
+  lifecycleRevision: LifecycleRevisionSchema,
 });
 // Future schema versions remain readable without discarding unknown fields.
 export const AgentSchema = AgentSummarySchema.extend({

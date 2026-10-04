@@ -8,17 +8,17 @@ The existing `resources` and `resource_versions` tables support history and rest
 
 All three catalog kinds expose these routes below `/api/teams/:teamId/{workspaces|agents|flows}/:resourceId`:
 
-| Method and suffix                 | Contract                                                                                                    |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `GET /versions?cursor=<revision>` | Up to 50 metadata entries, newest first; exclusive numeric revision cursor; `nextCursor` is null at the end |
-| `GET /versions/:versionId`        | Complete immutable definition with its original revision, schema version, and creation time                 |
-| `POST /restore`                   | Strict `{ versionId, revision }` body; expected current revision; concrete current-record response          |
+| Method and suffix                 | Contract                                                                                                              |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `GET /versions?cursor=<revision>` | Up to 50 metadata entries, newest first; exclusive numeric revision cursor; `nextCursor` is null at the end           |
+| `GET /versions/:versionId`        | Complete immutable definition with its original revision, schema version, and creation time                           |
+| `POST /restore`                   | Strict `{ versionId, revision, lifecycleRevision }` body; expected current counters; concrete current-record response |
 
 The history page contains resource/team/version IDs, revision, schema version, and creation time. It omits definitions. Missing resources return 404 even for an empty page. Query fields are strict, and revision cursors must be positive decimal integers within the PostgreSQL integer range. History resource lookup always includes kind, team, and organization.
 
 ## Mutation boundary
 
-Restore obtains current write authorization with identity/membership locks, locks the owning resource for update, and re-reads its current snapshot. It rejects a stale expected revision. The source lookup pairs version ID with that exact resource ID; the server supplies all restored fields from storage. Unsupported current/source schemas and invalid current/source definitions are read-only.
+Restore obtains current write authorization with identity/membership locks, locks the owning resource for update, and re-reads its current snapshot. It rejects a stale expected content or lifecycle revision. The source lookup pairs version ID with that exact resource ID; the server supplies all restored fields from storage. Unsupported current/source schemas and invalid current/source definitions are read-only.
 
 Unsupported or invalid source snapshots include a safe `versionId` field error. Current snapshot failures omit that field. This lets the editor reject only an unavailable source while retaining ordinary editing, or enter read-only conflict recovery if the current saved definition is incompatible.
 
@@ -30,4 +30,4 @@ Restore sets the current name and revision, inserts a fresh version, inserts `<k
 
 History browsing leaves the current draft intact. Preview reads and restore requests are abortable; restore busy state participates in navigation and unload protection. Restore requires explicit confirmation, including draft replacement. Failed restore retains the draft and selected snapshot. Stale conflicts offer explicit load-latest recovery; mutations are never automatically retried. Session expiry follows existing catalog handling.
 
-The [progress record](../progress/2026-10-02-01-catalog-history.md) records actual verification and limitations. Archive/delete, templates, relational inbound dependency handling, and execution remain separate increments.
+The [progress record](../progress/2026-10-02-01-catalog-history.md) records the original verification and limitations. The [archive increment](catalog-archive.md) adds the required lifecycle counter, rejects restore while archived, and requires active Flow dependencies. History remains readable for archived records. Templates, deletion, a relational dependency index, and execution remain separate work.

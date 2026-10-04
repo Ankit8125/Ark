@@ -1,5 +1,6 @@
 import type {
   ResourceVersion,
+  ResourceLifecycleRequest,
   ResourceVersionListResponse,
   ResourceVersionSummary,
   RestoreResourceRequest,
@@ -13,8 +14,11 @@ import { canEditCatalog } from "./permissions";
 export type DraftStatus = { dirty: boolean; busy: boolean };
 export type CatalogRecord = {
   id: string;
+  versionId: string;
   name: string;
   revision: number;
+  lifecycleRevision: number;
+  archivedAt: string | null;
   schemaVersion: number;
   definition: unknown;
 };
@@ -38,6 +42,18 @@ export type EditorConfig<Definition, RecordType extends CatalogRecord> = {
         };
   };
   api: {
+    archive: (
+      teamId: string,
+      id: string,
+      input: ResourceLifecycleRequest,
+      signal?: AbortSignal,
+    ) => Promise<RecordType>;
+    unarchive: (
+      teamId: string,
+      id: string,
+      input: ResourceLifecycleRequest,
+      signal?: AbortSignal,
+    ) => Promise<RecordType>;
     listVersions: (
       teamId: string,
       id: string,
@@ -69,7 +85,12 @@ export type EditorConfig<Definition, RecordType extends CatalogRecord> = {
     update: (
       teamId: string,
       id: string,
-      input: { revision: number; schemaVersion: 1; definition: Definition },
+      input: {
+        revision: number;
+        lifecycleRevision: number;
+        schemaVersion: 1;
+        definition: Definition;
+      },
       signal?: AbortSignal,
     ) => Promise<RecordType>;
   };
@@ -94,6 +115,8 @@ export function useVersionedEditor<
   const [loading, setLoading] = useState(Boolean(resourceId));
   const [saving, setSaving] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [changingLifecycle, setChangingLifecycle] = useState(false);
+  const [lifecycleFailed, setLifecycleFailed] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [versions, setVersions] = useState<ResourceVersionSummary[]>([]);
   const [nextVersionCursor, setNextVersionCursor] = useState<number | null>(
@@ -112,7 +135,7 @@ export function useVersionedEditor<
   const [success, setSuccess] = useState("");
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [conflict, setConflict] = useState<
-    "revision" | "identity" | "schema" | null
+    "revision" | "lifecycle" | "identity" | "schema" | null
   >(null);
   const [writeDenied, setWriteDenied] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -124,13 +147,19 @@ export function useVersionedEditor<
   const formRef = useRef<HTMLFormElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
   const dirty = JSON.stringify(draft) !== savedDefinition;
-  const busy = loading || saving || restoring || historyLoading !== null;
+  const busy =
+    loading ||
+    saving ||
+    restoring ||
+    changingLifecycle ||
+    historyLoading !== null;
   const supported =
     !record ||
     (record.schemaVersion === 1 &&
       config.schema.safeParse(record.definition).success);
-  const writable =
+  const lifecycleWritable =
     canEditCatalog(team) && supported && !writeDenied && conflict !== "schema";
+  const writable = lifecycleWritable && !record?.archivedAt;
   const selectedVersionSupported =
     selectedVersion?.schemaVersion === 1 &&
     config.schema.safeParse(selectedVersion.definition).success &&
@@ -171,6 +200,8 @@ export function useVersionedEditor<
       setLoading(Boolean(resourceId));
       setSaving(false);
       setRestoring(false);
+      setChangingLifecycle(false);
+      setLifecycleFailed(false);
       clearHistory();
       setLoadError("");
       setMessage("");
@@ -254,8 +285,17 @@ export function useVersionedEditor<
       for (const [key, value] of Object.entries(error.fieldErrors))
         fields[key.replace(/^definition\./, "")] = value;
       if (error.code === "REVISION_CONFLICT") setConflict("revision");
+      if (
+        error.code === "LIFECYCLE_CONFLICT" ||
+        error.code === "RESOURCE_ARCHIVED"
+      )
+        setConflict("lifecycle");
       if (error.code === "ID_CONFLICT") setConflict("identity");
-      if (error.code === "UNSUPPORTED_SCHEMA_VERSION" && !fromRestore)
+      if (
+        (error.code === "UNSUPPORTED_SCHEMA_VERSION" ||
+          error.code === "INVALID_STORED_DEFINITION") &&
+        !fromRestore
+      )
         setConflict("schema");
       if (error.status === 403) setWriteDenied(true);
     }
@@ -365,6 +405,7 @@ export function useVersionedEditor<
         {
           versionId: selectedVersion.versionId,
           revision: record.revision,
+          lifecycleRevision: record.lifecycleRevision,
         },
         controller.signal,
       );
@@ -380,6 +421,7 @@ export function useVersionedEditor<
       setDraft(parsed.data);
       setSavedDefinition(JSON.stringify(parsed.data));
       setConflict(null);
+      setLifecycleFailed(false);
       setSuccess(
         `Restored revision ${selectedVersion.revision} as revision ${value.revision}.`,
       );
@@ -409,7 +451,7 @@ export function useVersionedEditor<
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!writable || busy || saveInFlight.current) return;
+    if (!writable || conflict || busy || saveInFlight.current) return;
     setErrors({});
     setMessage("");
     setSuccess("");
@@ -434,6 +476,7 @@ export function useVersionedEditor<
             record.id,
             {
               revision: record.revision,
+              lifecycleRevision: record.lifecycleRevision,
               schemaVersion: 1,
               definition: parsed.data,
             },
@@ -456,6 +499,7 @@ export function useVersionedEditor<
       setDraft(result.data);
       setSavedDefinition(JSON.stringify(result.data));
       setConflict(null);
+      setLifecycleFailed(false);
       clearHistory();
       setSuccess(`Saved revision ${value.revision}.`);
       onDraftStatus({ dirty: false, busy: false });
@@ -467,6 +511,78 @@ export function useVersionedEditor<
     } finally {
       if (request.current === controller) saveInFlight.current = false;
       if (!controller.signal.aborted && mounted.current) setSaving(false);
+    }
+  }
+
+  async function changeLifecycle() {
+    if (
+      !record ||
+      !lifecycleWritable ||
+      conflict ||
+      busy ||
+      saveInFlight.current ||
+      historyInFlight.current
+    )
+      return;
+    const archive = !record.archivedAt;
+    const action = archive ? "archive" : "unarchive";
+    if (
+      !window.confirm(
+        `${archive ? "Archive" : "Unarchive"} this ${config.kind}? ${archive ? "It will move to the archived catalog. Its saved definition and history remain available." : "It will return to the active catalog with the same saved definition."}${dirty ? " Your unsaved draft will be discarded." : ""}${config.kind === "flow" && !archive ? " Its original pinned dependencies must still be available." : ""}`,
+      )
+    )
+      return;
+    const controller = new AbortController();
+    request.current = controller;
+    saveInFlight.current = true;
+    setChangingLifecycle(true);
+    setLifecycleFailed(false);
+    setMessage("");
+    setSuccess("");
+    setErrors({});
+    onDraftStatus({ dirty, busy: true });
+    try {
+      const value = await config.api[action](
+        team.id,
+        record.id,
+        {
+          revision: record.revision,
+          lifecycleRevision: record.lifecycleRevision,
+        },
+        controller.signal,
+      );
+      if (controller.signal.aborted || !mounted.current) return;
+      const parsed = config.schema.safeParse(value.definition);
+      if (
+        value.schemaVersion !== 1 ||
+        !parsed.success ||
+        Boolean(value.archivedAt) !== archive ||
+        value.versionId !== record.versionId ||
+        value.revision !== record.revision ||
+        value.lifecycleRevision !== record.lifecycleRevision + 1
+      )
+        throw new ApiRequestError(
+          502,
+          "INVALID_RESPONSE",
+          `Ark returned an unexpected ${action} result. Load latest to check the saved ${config.kind}.`,
+        );
+      setRecord(value);
+      setDraft(parsed.data);
+      setSavedDefinition(JSON.stringify(parsed.data));
+      setConflict(null);
+      setSuccess(
+        `${archive ? "Archived" : "Unarchived"} ${config.kind}. Saved revision ${value.revision} is unchanged.`,
+      );
+      setRestoreFailed(false);
+      onDraftStatus({ dirty: false, busy: false });
+    } catch (error) {
+      if (controller.signal.aborted || !mounted.current) return;
+      setLifecycleFailed(true);
+      mutationError(error);
+    } finally {
+      if (request.current === controller) saveInFlight.current = false;
+      if (!controller.signal.aborted && mounted.current)
+        setChangingLifecycle(false);
     }
   }
 
@@ -500,6 +616,7 @@ export function useVersionedEditor<
       setSavedDefinition(JSON.stringify(next));
       setErrors({});
       setConflict(null);
+      setLifecycleFailed(false);
       setSuccess("");
       clearHistory();
       onDraftStatus({ dirty: false, busy: false });
@@ -538,6 +655,9 @@ export function useVersionedEditor<
     loading,
     saving,
     restoring,
+    changingLifecycle,
+    lifecycleFailed,
+    lifecycleWritable,
     historyOpen,
     versions,
     nextVersionCursor,
@@ -567,6 +687,7 @@ export function useVersionedEditor<
     previewVersion,
     closeHistory,
     restoreVersion,
+    changeLifecycle,
   };
 }
 

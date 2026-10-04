@@ -1,6 +1,6 @@
 # How the project is organized
 
-Updated 2026-10-01. [Learning index](README.md)
+Updated 2026-10-03. [Learning index](README.md)
 
 Ark is a TypeScript modular monolith: one application with explicit boundaries. This is the recommended structure for V0.1 identity and the V0.2 Workspace/Agent/Flow slices. The tree shows relevant implemented files, with repeated configuration and assets omitted.
 
@@ -44,6 +44,7 @@ ark/
 |   |   |       |-- CatalogHistory.test.tsx # History recovery/lifecycle checks
 |   |   |       |-- history-api.ts    # Shared history/restore HTTP adapter
 |   |   |       |-- history-api.test.tsx # Envelope and context validation
+|   |   |       |-- lifecycle-api.ts  # Archive/unarchive HTTP and list filters
 |   |   |       |-- CatalogList.tsx    # Paginated loading and recovery
 |   |   |       |-- useDraftNavigation.tsx # Dirty/busy navigation protection
 |   |   |       |-- permissions.ts     # UI role projection; server is authority
@@ -76,6 +77,7 @@ ark/
 |   |   |-- agents.ts               # Agent schemas and inferred types
 |   |   |-- flows.ts                # Typed ordered graph and reference validation
 |   |   |-- catalog-versions.ts     # Paired pins and immutable version DTO
+|   |   |-- catalog-lifecycle.ts    # Archive state filters and expected counters
 |   |   `-- catalog-text.ts         # Shared PostgreSQL-safe text validator
 |   `-- db/
 |       |-- src/index.ts            # Pool, transactions, migration runner
@@ -83,7 +85,8 @@ ark/
 |           |-- 001_identity.sql
 |           |-- 002_workspaces.sql
 |           |-- 003_agents.sql
-|           `-- 004_flows.sql
+|           |-- 004_flows.sql
+|           `-- 005_catalog_archive.sql
 |-- scripts/
 |   |-- lib/local-database-url.mjs   # Local maintenance/test URL validation
 |   |-- lib/local-database-url.d.mts # Types for the JavaScript helper
@@ -126,6 +129,8 @@ The second catalog exposed real duplication, so transaction handling and browser
 
 [History and restore](10-catalog-history.md) extend the same catalog boundary. History pages contain metadata; selecting a revision fetches its complete definition. Restore uses the source snapshot on the server and commits a fresh version after current authorization, expected-revision, and dependency checks. Shared `CatalogHistory` controls and a small request adapter reuse the existing editor's recovery and navigation handling.
 
+[Archive and unarchive](11-catalog-archive.md) change resource lifecycle metadata while keeping definition snapshots unchanged. The shared editor carries both expected counters; catalog lists select active or archived state before pagination. Backend inbound-reference checks prevent archiving a dependency used by an active Flow, and Flow unarchive revalidates its original pins.
+
 Extract a repository abstraction when persistence needs a real alternative or repeated query boundaries become difficult to test. Until then, the identity service's parameterized SQL and injected pool keep transaction ownership visible. Separate engine/runner entrypoints belong to their planned milestones, not this review.
 
 Use PascalCase for React components and domain types, camelCase for functions/variables, and descriptive lowercase or kebab-case names for infrastructure modules. Keep types beside their owner; infer request/response types from Zod rather than duplicating them in a global `types` folder. Small modules with clear responsibilities satisfy the useful parts of SOLID without speculative layers.
@@ -144,7 +149,7 @@ pnpm.cmd test:integration
 pnpm.cmd test:guard
 ```
 
-`test:unit` includes React DOM tests in jsdom as well as contracts and infrastructure checks. jsdom is development-only and does not replace a real browser walkthrough. Integration tests need the already-provisioned local `ark_test` database and Docker running. Run `pnpm.cmd db:prepare` after pulling a new migration; the Flow increment adds `004_flows.sql`.
+`test:unit` includes React DOM tests in jsdom as well as contracts and infrastructure checks. jsdom is development-only and does not replace a real browser walkthrough. Integration tests need the already-provisioned local `ark_test` database and Docker running. Run `pnpm.cmd db:prepare` after pulling a new migration; the archive increment adds `005_catalog_archive.sql`.
 
 An error boundary handles rendering failures, not every asynchronous callback, failed event handler, or broken application download. Expected request failures continue through the API/form error paths. Logging intentionally trades detailed stack traces for privacy; adding richer diagnostics needs a reviewed, sanitized schema. No remote monitoring service was added. A sound V0.1 foundation is not a claim of production readiness or perfection.
 

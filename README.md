@@ -2,7 +2,7 @@
 
 An independent, self-hosted development platform being built incrementally: a task becomes a plan, a verified change, a human-approved publication, and a draft pull request. The intended product supports multiple teams with backend-enforced permissions.
 
-**Verified locally: V0.1 identity plus Workspace, Agent, and ordered Flow catalogs with history/restore.** Create the first organization, owner, and team through local setup; sign in and save team-owned configuration with immutable versions and stale-edit protection. Browse saved snapshots and restore one as a new revision. Flows connect typed stages and pin exact Workspace/Agent versions. A Fastify API validates inputs and checks authentication, explicit team membership, write roles, and dependencies against PostgreSQL. See the [history acceptance record](notes/progress/2026-10-02-01-catalog-history.md) for automated/browser evidence and cleanup. Session execution, runner enrollment, model calls, and task-to-PR workflows belong to later increments. V0.2 remains incomplete; archive and templates follow separately.
+**Verified locally: V0.1 identity plus Workspace, Agent, and ordered Flow catalogs with history/restore and archive/unarchive.** Create the first organization, owner, and team through local setup; sign in and save team-owned configuration with immutable versions and stale-edit protection. Browse snapshots, restore one as a new revision, or archive configuration while keeping its history. Flows connect typed stages and pin exact Workspace/Agent versions. Archive protects active Flow dependencies; unarchive revalidates original pins. A Fastify API checks inputs, authentication, explicit team membership, write roles, and dependencies against PostgreSQL. See the [archive acceptance record](notes/progress/2026-10-04-01-archive-completion.md) for automated/browser evidence and cleanup. Session execution, runner enrollment, model calls, and task-to-PR workflows belong to later increments. V0.2 remains incomplete; templates are next.
 
 ## Start reading
 
@@ -57,7 +57,7 @@ Stop both development processes with Ctrl+C and the database with `pnpm.cmd db:s
 2. Run applicable checks, add a dated entry under `notes/progress/`, and update its index.
 3. Stage explicit files; inspect `git diff --cached` locally.
 4. Run `pnpm.cmd check:staged`, then commit with a descriptive message.
-5. Push the reviewed commits and verify that the remote branch matches local HEAD.
+5. When synchronization is authorized, push the reviewed commits and verify that the remote branch matches local HEAD.
 
 The installed pre-commit hook repeats the staged-file guard. It catches selected token formats, credential-bearing URLs, known local `.env` secrets, and private/local files. It is a targeted safety check, not a guarantee that every possible secret or confidential passage is detected. Hooks must be installed in each fresh clone.
 

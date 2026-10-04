@@ -1,3 +1,4 @@
+import { ResourceLifecycleRequestSchema } from "@ark/contracts";
 import {
   CreateWorkspaceRequestSchema,
   UpdateWorkspaceRequestSchema,
@@ -25,8 +26,11 @@ export function registerWorkspaceRoutes(
 ): void {
   app.get(collectionPath, async (request) => {
     const { teamId } = parseRequest(teamParams, request.params);
-    const { cursor } = parseRequest(WorkspaceListQuerySchema, request.query);
-    return workspaces.list(request.cookies.ark_session, teamId, cursor);
+    const { cursor, status } = parseRequest(
+      WorkspaceListQuerySchema,
+      request.query,
+    );
+    return workspaces.list(request.cookies.ark_session, teamId, cursor, status);
   });
   app.get(detailPath, async (request) => {
     const { teamId, workspaceId } = parseRequest(
@@ -86,6 +90,31 @@ export function registerWorkspaceRoutes(
       ),
     };
   });
+  for (const action of ["archive", "unarchive"] as const) {
+    app.post(
+      `${detailPath}/${action}`,
+      { bodyLimit: 1024 },
+      async (request) => {
+        const { teamId, workspaceId } = parseRequest(
+          WorkspaceParamsSchema,
+          request.params,
+        );
+        const input = parseRequest(
+          ResourceLifecycleRequestSchema,
+          request.body,
+        );
+        return {
+          workspace: await workspaces.setArchived(
+            request.cookies.ark_session,
+            teamId,
+            workspaceId,
+            input,
+            action === "archive",
+          ),
+        };
+      },
+    );
+  }
   app.post(collectionPath, mutationOptions, async (request, reply) => {
     const { teamId } = parseRequest(teamParams, request.params);
     const input = parseRequest(CreateWorkspaceRequestSchema, request.body);

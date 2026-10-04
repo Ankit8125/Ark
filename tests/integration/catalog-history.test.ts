@@ -100,6 +100,7 @@ const restore = (
     `${detail(teamId, kind, current.id)}/restore`,
     {
       revision: current.revision,
+      lifecycleRevision: current.lifecycleRevision,
       versionId: sourceId,
     },
     cookie,
@@ -116,6 +117,7 @@ const update = (
     detail(teamId, kind, current.id),
     {
       revision: current.revision,
+      lifecycleRevision: current.lifecycleRevision,
       schemaVersion: 1,
       definition,
     },
@@ -479,11 +481,16 @@ describe("catalog history and immutable restore with real PostgreSQL", () => {
           ).statusCode,
         ).toBe(400);
       for (const body of [
-        { revision: 0, versionId: current.versionId },
-        { revision: 2_147_483_647, versionId: current.versionId },
-        { revision: 1, versionId: "invalid" },
+        { revision: 0, lifecycleRevision: 1, versionId: current.versionId },
+        {
+          revision: 2_147_483_647,
+          lifecycleRevision: 1,
+          versionId: current.versionId,
+        },
+        { revision: 1, lifecycleRevision: 1, versionId: "invalid" },
         {
           revision: 1,
+          lifecycleRevision: 1,
           versionId: current.versionId,
           definition: f.definitions[kind],
         },

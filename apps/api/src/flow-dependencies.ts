@@ -1,9 +1,10 @@
 import {
   AgentDefinitionSchema,
+  FlowDefinitionSchema,
   WorkspaceDefinitionSchema,
 } from "@ark/contracts";
 import type { FlowDefinition, ResourceVersionReference } from "@ark/contracts";
-import type { PoolClient } from "pg";
+import type { PoolClient, QueryResult } from "pg";
 import { ApiFailure } from "./errors.js";
 import type { TeamAccess } from "./identity.js";
 
@@ -68,6 +69,7 @@ export async function validateFlowDependencies(
     `SELECT id FROM resources
      WHERE id = ANY($1::uuid[]) AND team_id = $2 AND organization_id = $3
        AND kind IN ('workspace', 'agent')
+       AND archived_at IS NULL
      ORDER BY id FOR SHARE`,
     [resourceIds, access.team.id, access.organizationId],
   );
@@ -84,7 +86,7 @@ export async function validateFlowDependencies(
      FROM resources r JOIN resource_versions v ON v.resource_id = r.id
      WHERE r.id = ANY($1::uuid[]) AND v.id = ANY($2::uuid[])
        AND r.team_id = $3 AND r.organization_id = $4
-       AND r.kind IN ('workspace', 'agent')`,
+       AND r.kind IN ('workspace', 'agent') AND r.archived_at IS NULL`,
     [resourceIds, versionIds, access.team.id, access.organizationId],
   );
   const versions = new Map(
@@ -116,5 +118,60 @@ export async function validateFlowDependencies(
         [reference.field]: [message],
       });
     }
+  }
+}
+
+// The caller already holds the Workspace/Agent row FOR UPDATE. Never lock
+// inbound Flow rows here: Flow writes lock their own row before dependencies.
+// A fresh statement sees writes that committed while the dependency lock waited.
+// New references must acquire a conflicting dependency SHARE lock, then recheck
+// active state, so cannot slip between this scan and the archive commit.
+export async function validateNoActiveFlowReferences(
+  client: PoolClient,
+  access: TeamAccess,
+  resourceId: string,
+): Promise<void> {
+  // Page the scan to bound memory; the dependency lock is held across pages.
+  // Existing pins may disappear concurrently, causing a conservative rejection.
+  // New pins cannot become visible until after this transaction releases its lock.
+  let cursor: string | null = null;
+  for (;;) {
+    const result: QueryResult<{
+      id: string;
+      schema_version: number;
+      definition: unknown;
+    }> = await client.query(
+      `SELECT r.id, v.schema_version, v.definition FROM resources r
+       JOIN resource_versions v ON v.resource_id = r.id AND v.revision = r.revision
+       WHERE r.team_id = $1 AND r.organization_id = $2 AND r.kind = 'flow'
+         AND r.archived_at IS NULL AND ($3::uuid IS NULL OR r.id > $3::uuid)
+       ORDER BY r.id LIMIT 50`,
+      [access.team.id, access.organizationId, cursor],
+    );
+    for (const row of result.rows) {
+      const parsed =
+        row.schema_version === 1
+          ? FlowDefinitionSchema.safeParse(row.definition)
+          : null;
+      if (!parsed?.success)
+        throw new ApiFailure(
+          409,
+          "UNVERIFIABLE_DEPENDENCIES",
+          "An active Flow has an unsupported definition. Its dependencies must be verified before this resource can be archived.",
+        );
+      if (
+        parsed.data.workspace.resourceId === resourceId.toLowerCase() ||
+        parsed.data.stages.some(
+          (stage) => stage.agent.resourceId === resourceId.toLowerCase(),
+        )
+      )
+        throw new ApiFailure(
+          409,
+          "RESOURCE_IN_USE",
+          "An active Flow uses this resource. Update or archive that Flow before archiving this resource.",
+        );
+    }
+    if (result.rows.length < 50) return;
+    cursor = result.rows.at(-1)!.id;
   }
 }

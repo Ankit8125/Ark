@@ -145,6 +145,25 @@ describe("workspace contracts", () => {
       expect(
         UpdateWorkspaceRequestSchema.safeParse({
           revision,
+          lifecycleRevision: 1,
+          schemaVersion: 1,
+          definition,
+        }).success,
+      ).toBe(false);
+    }
+    for (const lifecycleRevision of [
+      undefined,
+      null,
+      0,
+      -1,
+      1.5,
+      "1",
+      2_147_483_648,
+    ]) {
+      expect(
+        UpdateWorkspaceRequestSchema.safeParse({
+          revision: 1,
+          lifecycleRevision,
           schemaVersion: 1,
           definition,
         }).success,
@@ -153,6 +172,7 @@ describe("workspace contracts", () => {
     expect(
       UpdateWorkspaceRequestSchema.safeParse({
         revision: 1,
+        lifecycleRevision: 1,
         schemaVersion: 1,
         definition,
       }).success,
@@ -206,9 +226,10 @@ describe("workspace contracts", () => {
           .success,
       ).toBe(false);
     }
-    expect(WorkspaceListQuerySchema.parse({})).toEqual({});
+    expect(WorkspaceListQuerySchema.parse({})).toEqual({ status: "active" });
     expect(WorkspaceListQuerySchema.parse({ cursor: id })).toEqual({
       cursor: id,
+      status: "active",
     });
     expect(WorkspaceListQuerySchema.safeParse({ cursor: "bad" }).success).toBe(
       false,
@@ -217,6 +238,8 @@ describe("workspace contracts", () => {
       false,
     );
     const summary = {
+      archivedAt: null,
+      lifecycleRevision: 1,
       id,
       teamId: id,
       name: definition.name,
@@ -244,6 +267,8 @@ describe("workspace contracts", () => {
         teamId: id,
         versionId: id,
         name: definition.name,
+        archivedAt: null,
+        lifecycleRevision: 1,
         revision: 2,
         schemaVersion: 2,
         definition: futureDefinition,

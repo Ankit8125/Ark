@@ -1,11 +1,16 @@
 import {
   WorkspaceListResponseSchema,
   WorkspaceResponseSchema,
+  type CatalogStatus,
   type CreateWorkspaceRequest,
   type UpdateWorkspaceRequest,
 } from "@ark/contracts";
 import { requestJson } from "../../api";
 import { catalogHistoryApi } from "../catalog/history-api";
+import {
+  catalogLifecycleApi,
+  catalogListQuery,
+} from "../catalog/lifecycle-api";
 
 function collection(teamId: string) {
   return `/api/teams/${encodeURIComponent(teamId)}/workspaces`;
@@ -24,14 +29,24 @@ function workspaceResponse(teamId: string, id: string) {
 
 export const workspaceApi = {
   ...catalogHistoryApi("workspaces", workspaceResponse),
-  list: (teamId: string, cursor?: string, signal?: AbortSignal) =>
+  ...catalogLifecycleApi("workspaces", workspaceResponse),
+  list: (
+    teamId: string,
+    cursor?: string,
+    signal?: AbortSignal,
+    status: CatalogStatus = "active",
+  ) =>
     requestJson(
-      `${collection(teamId)}${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
+      `${collection(teamId)}${catalogListQuery(status, cursor)}`,
       {
         parse(value: unknown) {
           const result = WorkspaceListResponseSchema.parse(value);
           if (
-            result.workspaces.some((workspace) => workspace.teamId !== teamId)
+            result.workspaces.some(
+              (workspace) =>
+                workspace.teamId !== teamId ||
+                (workspace.archivedAt !== null) !== (status === "archived"),
+            )
           )
             throw new Error("Unexpected workspace context");
           return result;

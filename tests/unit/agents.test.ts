@@ -121,6 +121,25 @@ describe("agent contracts", () => {
       expect(
         UpdateAgentRequestSchema.safeParse({
           revision,
+          lifecycleRevision: 1,
+          schemaVersion: 1,
+          definition,
+        }).success,
+      ).toBe(false);
+    }
+    for (const lifecycleRevision of [
+      undefined,
+      null,
+      0,
+      -1,
+      1.5,
+      "1",
+      2_147_483_648,
+    ]) {
+      expect(
+        UpdateAgentRequestSchema.safeParse({
+          revision: 1,
+          lifecycleRevision,
           schemaVersion: 1,
           definition,
         }).success,
@@ -129,10 +148,16 @@ describe("agent contracts", () => {
     expect(
       UpdateAgentRequestSchema.parse({
         revision: 1,
+        lifecycleRevision: 1,
         schemaVersion: 1,
         definition,
       }),
-    ).toEqual({ revision: 1, schemaVersion: 1, definition });
+    ).toEqual({
+      revision: 1,
+      lifecycleRevision: 1,
+      schemaVersion: 1,
+      definition,
+    });
   });
 
   it("rejects PostgreSQL-incompatible text while preserving valid Unicode", () => {
@@ -187,8 +212,11 @@ describe("agent contracts", () => {
     expect(
       AgentParamsSchema.safeParse({ teamId: id, agentId: "invalid" }).success,
     ).toBe(false);
-    expect(AgentListQuerySchema.parse({})).toEqual({});
-    expect(AgentListQuerySchema.parse({ cursor: id })).toEqual({ cursor: id });
+    expect(AgentListQuerySchema.parse({})).toEqual({ status: "active" });
+    expect(AgentListQuerySchema.parse({ cursor: id })).toEqual({
+      cursor: id,
+      status: "active",
+    });
     expect(AgentListQuerySchema.safeParse({ cursor: "bad" }).success).toBe(
       false,
     );
@@ -196,6 +224,8 @@ describe("agent contracts", () => {
       false,
     );
     const summary = {
+      archivedAt: null,
+      lifecycleRevision: 1,
       id,
       teamId: id,
       name: definition.name,
@@ -223,6 +253,8 @@ describe("agent contracts", () => {
         teamId: id,
         versionId: id,
         name: definition.name,
+        archivedAt: null,
+        lifecycleRevision: 1,
         revision: 2,
         schemaVersion: 2,
         definition: futureDefinition,

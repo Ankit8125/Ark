@@ -2,12 +2,17 @@ import {
   FlowListResponseSchema,
   FlowResponseSchema,
   ResourceVersionResponseSchema,
+  type CatalogStatus,
   type CreateFlowRequest,
   type ResourceVersionReference,
   type UpdateFlowRequest,
 } from "@ark/contracts";
 import { requestJson } from "../../api";
 import { catalogHistoryApi } from "../catalog/history-api";
+import {
+  catalogLifecycleApi,
+  catalogListQuery,
+} from "../catalog/lifecycle-api";
 
 function collection(teamId: string) {
   return `/api/teams/${encodeURIComponent(teamId)}/flows`;
@@ -24,13 +29,25 @@ function flowResponse(teamId: string, id: string) {
 }
 export const flowApi = {
   ...catalogHistoryApi("flows", flowResponse),
-  list: (teamId: string, cursor?: string, signal?: AbortSignal) =>
+  ...catalogLifecycleApi("flows", flowResponse),
+  list: (
+    teamId: string,
+    cursor?: string,
+    signal?: AbortSignal,
+    status: CatalogStatus = "active",
+  ) =>
     requestJson(
-      `${collection(teamId)}${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
+      `${collection(teamId)}${catalogListQuery(status, cursor)}`,
       {
         parse(value: unknown) {
           const result = FlowListResponseSchema.parse(value);
-          if (result.flows.some((flow) => flow.teamId !== teamId))
+          if (
+            result.flows.some(
+              (flow) =>
+                flow.teamId !== teamId ||
+                (flow.archivedAt !== null) !== (status === "archived"),
+            )
+          )
             throw new Error("Unexpected flow context");
           return result;
         },

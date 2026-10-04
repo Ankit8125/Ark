@@ -20,6 +20,8 @@ const fixture = {
   teamId,
   versionId,
   revision: 3,
+  archivedAt: null,
+  lifecycleRevision: 1,
   schemaVersion: 2,
   name: "Stored configuration",
   createdAt: timestamp,
@@ -73,7 +75,7 @@ describe.each([
       await adapter.restore(
         teamId,
         id,
-        { versionId, revision: 2 },
+        { versionId, revision: 2, lifecycleRevision: 1 },
         controller.signal,
       ),
     ).toEqual(fixture);
@@ -81,7 +83,7 @@ describe.each([
       `/api/teams/${teamId}/${plural}/${id}/restore`,
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ versionId, revision: 2 }),
+        body: JSON.stringify({ versionId, revision: 2, lifecycleRevision: 1 }),
         signal: controller.signal,
         headers: { "Content-Type": "application/json" },
       }),
@@ -105,7 +107,11 @@ describe.each([
     ).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
     respond({ [kind]: { ...fixture, id: otherId } });
     await expect(
-      adapter.restore(teamId, id, { versionId, revision: 2 }),
+      adapter.restore(teamId, id, {
+        versionId,
+        revision: 2,
+        lifecycleRevision: 1,
+      }),
     ).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
   });
 });

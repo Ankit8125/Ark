@@ -122,6 +122,8 @@ function saved(overrides: Partial<Flow> = {}): Flow {
     id: flowId,
     teamId: team.id,
     name: definition.name,
+    archivedAt: null,
+    lifecycleRevision: 1,
     revision: 1,
     versionId: "bb42b83e-c60a-43c0-a0ed-8b3860dfb16b",
     schemaVersion: 1,
@@ -139,6 +141,8 @@ function summary(kind: "workspace" | "agent") {
     name:
       kind === "workspace" ? workspaceDefinition.name : agentDefinition.name,
     revision: 1,
+    archivedAt: null,
+    lifecycleRevision: 1,
     versionId: reference.versionId,
     schemaVersion: 1,
     updatedAt: timestamp,
