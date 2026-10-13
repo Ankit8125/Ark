@@ -11,6 +11,7 @@ import {
 } from "../catalog/useVersionedEditor";
 import styles from "../catalog/catalog.module.css";
 import { flowApi } from "./api";
+import { flowFromTemplate } from "../catalog/template-drafts";
 import { FlowPorts } from "./FlowPorts";
 import { FlowStages } from "./FlowStages";
 import { fieldError, newStage, stageSources } from "./flow-fields";
@@ -43,6 +44,7 @@ const config: EditorConfig<FlowDefinition, Flow> = {
     };
   },
   schema: FlowDefinitionSchema,
+  fromTemplate: flowFromTemplate,
   api: flowApi,
 };
 

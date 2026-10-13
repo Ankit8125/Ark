@@ -13,6 +13,7 @@ import {
 } from "../catalog/useVersionedEditor";
 import styles from "../catalog/catalog.module.css";
 import { agentApi } from "./api";
+import { agentFromTemplate } from "../catalog/template-drafts";
 
 const config: EditorConfig<AgentDefinition, Agent> = {
   kind: "agent",
@@ -28,6 +29,7 @@ const config: EditorConfig<AgentDefinition, Agent> = {
     capabilities: [],
   }),
   schema: AgentDefinitionSchema,
+  fromTemplate: agentFromTemplate,
   api: agentApi,
 };
 const capabilities: {

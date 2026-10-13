@@ -13,5 +13,8 @@ Read these in order or open the topic you need:
 9. [Ordered Flows](09-flows.md): named inputs/outputs, ordered stages, pinned versions, validation, and save recovery.
 10. [Catalog history](10-catalog-history.md): browse complete snapshots and restore a saved definition as a new revision.
 11. [Catalog archive](11-catalog-archive.md): archive/unarchive, active Flow dependencies, and stale lifecycle recovery.
+12. [Catalog templates](12-catalog-templates.md): built-in examples, editable copies, explicit dependency choices, and recovery.
+
+The [template completion record](../progress/2026-10-13-01-template-completion.md) records the local V0.2 catalog checkpoint and its limits. Next comes the V0.3 enrollment, heartbeat, and revocation contract; runner execution is not available yet.
 
 Use [current progress](../progress/README.md) for verification and [findings](../findings/README.md) for durable decisions. Give future topics their own files and keep existing explanations aligned with implemented behavior.

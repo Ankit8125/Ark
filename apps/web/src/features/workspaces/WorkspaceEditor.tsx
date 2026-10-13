@@ -11,6 +11,7 @@ import {
 } from "../catalog/useVersionedEditor";
 import styles from "../catalog/catalog.module.css";
 import { workspaceApi } from "./api";
+import { workspaceFromTemplate } from "../catalog/template-drafts";
 
 type FieldName =
   | Exclude<keyof WorkspaceDefinition, "actions">
@@ -30,6 +31,7 @@ const config: EditorConfig<WorkspaceDefinition, Workspace> = {
     actions: { install: "", test: "", lint: "", build: "" },
   }),
   schema: WorkspaceDefinitionSchema,
+  fromTemplate: workspaceFromTemplate,
   api: workspaceApi,
 };
 

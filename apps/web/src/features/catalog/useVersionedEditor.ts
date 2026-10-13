@@ -1,4 +1,5 @@
 import type {
+  CatalogTemplate,
   ResourceVersion,
   ResourceLifecycleRequest,
   ResourceVersionListResponse,
@@ -10,6 +11,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiRequestError, errorMessage } from "../../api";
 import { canEditCatalog } from "./permissions";
+import { templateApi } from "./template-api";
 
 export type DraftStatus = { dirty: boolean; busy: boolean };
 export type CatalogRecord = {
@@ -33,6 +35,7 @@ export type EditorConfig<Definition, RecordType extends CatalogRecord> = {
   plural: "workspaces" | "agents" | "flows";
   createDescription: string;
   emptyDefinition: () => Definition;
+  fromTemplate: (template: CatalogTemplate) => Definition;
   schema: {
     safeParse: (value: unknown) =>
       | { success: true; data: Definition }
@@ -116,6 +119,10 @@ export function useVersionedEditor<
   const [saving, setSaving] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [changingLifecycle, setChangingLifecycle] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [templates, setTemplates] = useState<CatalogTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templatesError, setTemplatesError] = useState("");
   const [lifecycleFailed, setLifecycleFailed] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [versions, setVersions] = useState<ResourceVersionSummary[]>([]);
@@ -142,8 +149,10 @@ export function useVersionedEditor<
   const request = useRef<AbortController | null>(null);
   const saveInFlight = useRef(false);
   const historyInFlight = useRef(false);
+  const templatesInFlight = useRef(false);
   const identity = useRef(`${team.id}:${resourceId ?? "new"}`);
   const mounted = useRef(false);
+  const draftStatusCallback = useRef(onDraftStatus);
   const formRef = useRef<HTMLFormElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
   const dirty = JSON.stringify(draft) !== savedDefinition;
@@ -152,6 +161,7 @@ export function useVersionedEditor<
     saving ||
     restoring ||
     changingLifecycle ||
+    templatesLoading ||
     historyLoading !== null;
   const supported =
     !record ||
@@ -166,13 +176,16 @@ export function useVersionedEditor<
     !rejectedVersions.includes(selectedVersion.versionId);
 
   useEffect(() => {
+    draftStatusCallback.current = onDraftStatus;
+  }, [onDraftStatus]);
+  useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
       request.current?.abort();
-      onDraftStatus({ dirty: false, busy: false });
+      draftStatusCallback.current({ dirty: false, busy: false });
     };
-  }, [onDraftStatus]);
+  }, []);
   useEffect(() => {
     onDraftStatus({ dirty, busy });
   }, [dirty, busy, onDraftStatus]);
@@ -192,6 +205,11 @@ export function useVersionedEditor<
       request.current?.abort();
       saveInFlight.current = false;
       historyInFlight.current = false;
+      templatesInFlight.current = false;
+      setTemplatesOpen(false);
+      setTemplates([]);
+      setTemplatesLoading(false);
+      setTemplatesError("");
       setRecord(null);
       const empty = config.emptyDefinition();
       setDraft(empty);
@@ -262,6 +280,71 @@ export function useVersionedEditor<
     setDraft(next);
     setSuccess("");
     onDraftStatus({ dirty: JSON.stringify(next) !== savedDefinition, busy });
+  }
+
+  async function loadTemplates() {
+    if (
+      resourceId ||
+      record ||
+      !writable ||
+      conflict ||
+      busy ||
+      saveInFlight.current ||
+      templatesInFlight.current
+    )
+      return;
+    const controller = new AbortController();
+    request.current = controller;
+    templatesInFlight.current = true;
+    setTemplatesOpen(true);
+    setTemplatesLoading(true);
+    setTemplatesError("");
+    onDraftStatus({ dirty, busy: true });
+    try {
+      const result = await templateApi.list(
+        team.id,
+        config.kind,
+        controller.signal,
+      );
+      if (controller.signal.aborted || !mounted.current) return;
+      setTemplates(result.templates);
+    } catch (error) {
+      if (controller.signal.aborted || !mounted.current) return;
+      if (error instanceof ApiRequestError && error.status === 401) onExpired();
+      else setTemplatesError(errorMessage(error));
+    } finally {
+      if (request.current === controller) templatesInFlight.current = false;
+      if (!controller.signal.aborted && mounted.current)
+        setTemplatesLoading(false);
+    }
+  }
+
+  function applyTemplate(template: CatalogTemplate) {
+    if (
+      resourceId ||
+      record ||
+      !writable ||
+      conflict ||
+      busy ||
+      saveInFlight.current ||
+      templatesInFlight.current ||
+      template.kind !== config.kind
+    )
+      return;
+    if (
+      dirty &&
+      !window.confirm(
+        `Replace your unsaved ${config.kind} draft with the ${template.title} template?`,
+      )
+    )
+      return;
+    // Keep the creation ID: a previous create response may have been lost.
+    changeDraft(config.fromTemplate(template));
+    setErrors({});
+    setMessage("");
+    setSuccess(
+      "Template copied to your draft. Review the fields before saving.",
+    );
   }
 
   function clearHistory() {
@@ -451,7 +534,14 @@ export function useVersionedEditor<
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!writable || conflict || busy || saveInFlight.current) return;
+    if (
+      !writable ||
+      conflict ||
+      busy ||
+      saveInFlight.current ||
+      templatesInFlight.current
+    )
+      return;
     setErrors({});
     setMessage("");
     setSuccess("");
@@ -656,6 +746,10 @@ export function useVersionedEditor<
     saving,
     restoring,
     changingLifecycle,
+    templatesOpen,
+    templates,
+    templatesLoading,
+    templatesError,
     lifecycleFailed,
     lifecycleWritable,
     historyOpen,
@@ -679,6 +773,8 @@ export function useVersionedEditor<
     supported,
     writable,
     changeDraft,
+    loadTemplates,
+    applyTemplate,
     submit,
     loadLatest,
     keepAsNew,

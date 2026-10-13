@@ -1,8 +1,8 @@
 # How the project is organized
 
-Updated 2026-10-03. [Learning index](README.md)
+Updated 2026-10-13. [Learning index](README.md)
 
-Ark is a TypeScript modular monolith: one application with explicit boundaries. This is the recommended structure for V0.1 identity and the V0.2 Workspace/Agent/Flow slices. The tree shows relevant implemented files, with repeated configuration and assets omitted.
+Ark is a TypeScript modular monolith: one application with explicit boundaries. This is the implemented structure for local V0.1 identity and V0.2 Workspace/Agent/Flow configuration, including history, archive, and built-in templates. The [template completion record](../progress/2026-10-13-01-template-completion.md) records acceptance and limits. The tree shows relevant implemented files, with repeated configuration and assets omitted.
 
 ```text
 ark/
@@ -45,6 +45,10 @@ ark/
 |   |   |       |-- history-api.ts    # Shared history/restore HTTP adapter
 |   |   |       |-- history-api.test.tsx # Envelope and context validation
 |   |   |       |-- lifecycle-api.ts  # Archive/unarchive HTTP and list filters
+|   |   |       |-- CatalogTemplates.tsx # Optional examples for new writable drafts
+|   |   |       |-- CatalogTemplates.test.tsx # Copy, recovery, and context regressions
+|   |   |       |-- template-api.ts   # Validated team-scoped template reads
+|   |   |       |-- template-drafts.ts # Independent copies and fresh Flow stage IDs
 |   |   |       |-- CatalogList.tsx    # Paginated loading and recovery
 |   |   |       |-- useDraftNavigation.tsx # Dirty/busy navigation protection
 |   |   |       |-- permissions.ts     # UI role projection; server is authority
@@ -66,6 +70,8 @@ ark/
 |       |-- flow-routes.ts          # Flow HTTP adaptation
 |       |-- flows.ts                # Concrete Flow service/response contract
 |       |-- flow-dependencies.ts    # Locked, scoped immutable version checks
+|       |-- catalog-template-routes.ts # Authenticated team-scoped template reads
+|       |-- catalog-templates.ts    # Original read-only built-in examples
 |       |-- versioned-catalog.ts    # Shared authorized transactions and SQL
 |       |-- credentials.ts          # Password and session-token operations
 |       |-- errors.ts               # Validation and safe API failures
@@ -78,6 +84,7 @@ ark/
 |   |   |-- flows.ts                # Typed ordered graph and reference validation
 |   |   |-- catalog-versions.ts     # Paired pins and immutable version DTO
 |   |   |-- catalog-lifecycle.ts    # Archive state filters and expected counters
+|   |   |-- catalog-templates.ts    # Strict example envelopes and unpinned definitions
 |   |   `-- catalog-text.ts         # Shared PostgreSQL-safe text validator
 |   `-- db/
 |       |-- src/index.ts            # Pool, transactions, migration runner
@@ -130,6 +137,10 @@ The second catalog exposed real duplication, so transaction handling and browser
 [History and restore](10-catalog-history.md) extend the same catalog boundary. History pages contain metadata; selecting a revision fetches its complete definition. Restore uses the source snapshot on the server and commits a fresh version after current authorization, expected-revision, and dependency checks. Shared `CatalogHistory` controls and a small request adapter reuse the existing editor's recovery and navigation handling.
 
 [Archive and unarchive](11-catalog-archive.md) change resource lifecycle metadata while keeping definition snapshots unchanged. The shared editor carries both expected counters; catalog lists select active or archived state before pagination. Backend inbound-reference checks prevent archiving a dependency used by an active Flow, and Flow unarchive revalidates its original pins.
+
+[Built-in templates](12-catalog-templates.md) add authenticated reads of application examples. The browser copies a selected example into a new unsaved draft; Workspace copies need a repository URL, and Flow copies need explicit Workspace/Agent versions. Fresh stage IDs keep each Flow copy independent while preserving its bindings. Ordinary Save uses the existing catalog transaction, so templates need no migration or new storage entity. Template loading preserves manual edits, and late responses cannot populate another team or saved editor.
+
+The next bounded step defines V0.3 local runner enrollment, heartbeat, and revocation before implementation. It must separate enrollment and health from dispatch approval and grants. This does not start sessions, clone repositories, run containers or commands, or call a model.
 
 Extract a repository abstraction when persistence needs a real alternative or repeated query boundaries become difficult to test. Until then, the identity service's parameterized SQL and injected pool keep transaction ownership visible. Separate engine/runner entrypoints belong to their planned milestones, not this review.
 

@@ -333,6 +333,32 @@
   gap: 12px;
   min-width: 0;
 }
+.templateList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.templateEntry {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+.templateEntry h3 {
+  font-size: 14px;
+  font-weight: 550;
+}
+.templateEntry p {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.templateEntry button {
+  white-space: normal;
+  text-align: left;
+}
 .capability {
   display: flex;
   align-items: flex-start;

@@ -48,7 +48,9 @@ All active team members can read. Admins and developers can save. Failed request
 
 ## Archive and unarchive
 
-**Archive flow** moves the recipe out of the active catalog while preserving its name, saved revision, exact pins, and history. Choose **Archived** in the catalog filter to find it again. Its form and history remain read-only until unarchived. An archived Flow stops blocking archive of its Workspace and Agents; unarchiving checks that those original dependencies are active and supported again. It does not switch to newer versions. See the [archive guide](11-catalog-archive.md) for confirmation and stale-draft recovery. Templates, deletion, and execution remain future work.
+**Archive flow** moves the recipe out of the active catalog while preserving its name, saved revision, exact pins, and history. Choose **Archived** in the catalog filter to find it again. Its form and history remain read-only until unarchived. An archived Flow stops blocking archive of its Workspace and Agents; unarchiving checks that those original dependencies are active and supported again. It does not switch to newer versions. See the [archive guide](11-catalog-archive.md) for confirmation and stale-draft recovery.
+
+[Built-in templates](12-catalog-templates.md) can fill a new unsaved Flow draft. The implementation/review recipe is one editable example. Each copy has fresh stage IDs and matching bindings; choose a Workspace version and an Agent version for every stage before saving. The [template completion record](../progress/2026-10-13-01-template-completion.md) records acceptance and limits. Deletion and execution remain future work.
 
 ## Apply migrations and start
 

@@ -25,75 +25,106 @@ export function useDependencyCatalog(
   teamId: string,
   onExpired: () => void,
 ) {
-  const [page, setPage] = useState<Page>({ items: [], nextCursor: null });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const key = `${kind}:${teamId}:${attempt}`;
+  const [result, setResult] = useState<
+    (Page & { key: string; error: string; loadingMore: boolean }) | null
+  >(null);
   const request = useRef<AbortController | null>(null);
-  const loadingMore = useRef(false);
+  const inFlight = useRef(false);
+  const page = result?.key === key ? result : null;
+  const loading = page === null || page.loadingMore;
   useEffect(() => {
     const controller = new AbortController();
     request.current = controller;
+    inFlight.current = true;
     void load(kind, teamId, undefined, controller.signal)
-      .then((result) => {
-        if (!controller.signal.aborted) setPage(result);
+      .then((value) => {
+        if (!controller.signal.aborted)
+          setResult({ ...value, key, error: "", loadingMore: false });
       })
       .catch((reason: unknown) => {
         if (controller.signal.aborted) return;
-        if (reason instanceof ApiRequestError && reason.status === 401)
-          onExpired();
-        else setError(errorMessage(reason));
+        const expired =
+          reason instanceof ApiRequestError && reason.status === 401;
+        if (expired) onExpired();
+        setResult({
+          key,
+          items: [],
+          nextCursor: null,
+          error: expired ? "" : errorMessage(reason),
+          loadingMore: false,
+        });
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (request.current === controller) inFlight.current = false;
       });
     return () => {
       controller.abort();
       request.current?.abort();
     };
-  }, [kind, teamId, attempt, onExpired]);
+  }, [kind, teamId, key, attempt, onExpired]);
 
   async function more() {
-    if (!page.nextCursor || loadingMore.current) return;
-    loadingMore.current = true;
+    if (!page?.nextCursor || loading || inFlight.current) return;
+    inFlight.current = true;
     const controller = new AbortController();
     request.current = controller;
-    setLoading(true);
-    setError("");
+    setResult({ ...page, error: "", loadingMore: true });
     try {
-      const result = await load(
+      const value = await load(
         kind,
         teamId,
         page.nextCursor,
         controller.signal,
       );
       if (!controller.signal.aborted)
-        setPage((current) => ({
-          items: [
-            ...new Map(
-              [...current.items, ...result.items].map((item) => [
-                item.id,
-                item,
-              ]),
-            ).values(),
-          ],
-          nextCursor: result.nextCursor,
-        }));
+        setResult((current) =>
+          current?.key === key
+            ? {
+                key,
+                items: [
+                  ...new Map(
+                    [...current.items, ...value.items].map((item) => [
+                      item.id,
+                      item,
+                    ]),
+                  ).values(),
+                ],
+                nextCursor: value.nextCursor,
+                error: "",
+                loadingMore: false,
+              }
+            : current,
+        );
     } catch (reason) {
       if (controller.signal.aborted) return;
-      if (reason instanceof ApiRequestError && reason.status === 401)
-        onExpired();
-      else setError(errorMessage(reason));
+      const expired =
+        reason instanceof ApiRequestError && reason.status === 401;
+      if (expired) onExpired();
+      setResult((current) =>
+        current?.key === key
+          ? {
+              ...current,
+              error: expired ? "" : errorMessage(reason),
+              loadingMore: false,
+            }
+          : current,
+      );
     } finally {
-      loadingMore.current = false;
-      if (!controller.signal.aborted) setLoading(false);
+      if (request.current === controller) inFlight.current = false;
     }
   }
   function retry() {
-    setError("");
-    setLoading(true);
     setAttempt((value) => value + 1);
   }
-  return { ...page, loading, error, more, retry };
+  return {
+    items: page?.items ?? [],
+    nextCursor: page?.nextCursor ?? null,
+    loading,
+    error: page?.error ?? "",
+    more,
+    retry,
+  };
 }
 export type DependencyCatalog = ReturnType<typeof useDependencyCatalog>;

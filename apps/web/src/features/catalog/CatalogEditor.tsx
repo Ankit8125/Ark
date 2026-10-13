@@ -6,6 +6,7 @@ import { canEditCatalog } from "./permissions";
 import type { CatalogRecord, VersionedEditor } from "./useVersionedEditor";
 import styles from "./catalog.module.css";
 import { CatalogHistory } from "./CatalogHistory";
+import { CatalogTemplates } from "./CatalogTemplates";
 
 export function CatalogEditor<Definition, RecordType extends CatalogRecord>({
   editor,
@@ -161,6 +162,7 @@ export function CatalogEditor<Definition, RecordType extends CatalogRecord>({
               )}
             </div>
           )}
+          <CatalogTemplates editor={editor} />
           {children}
           <div className={styles.saveBar}>
             <div role="status">

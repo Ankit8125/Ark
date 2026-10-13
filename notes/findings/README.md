@@ -15,10 +15,13 @@ Keep facts and decisions in focused files; distinguish verified behavior from in
 | [Ordered Flows](flows.md)                         | Stage/port contract, pinned dependency boundaries, and acceptance limits                 |
 | [Catalog history](catalog-history.md)             | History pagination, fresh restore revisions, source audit, and current dependency checks |
 | [Catalog archive](catalog-archive.md)             | Lifecycle counters, visibility, inbound Flow checks, and acceptance contract             |
+| [Catalog templates](catalog-templates.md)         | Authenticated built-ins, independent drafts, explicit pins, and recovery contract        |
 
 ## Next decisions
 
-1. Define the first bounded template increment, including ownership, editable copies, and Flow dependency pins. Archive/unarchive acceptance and cleanup are recorded in the [completion entry](../progress/2026-10-04-01-archive-completion.md).
+The [built-in template contract](catalog-templates.md) defines the completed V0.2 example-copy boundary. Acceptance and limits are recorded in the [template completion entry](../progress/2026-10-13-01-template-completion.md).
+
+1. Define the first bounded V0.3 local runner enrollment, heartbeat, and revocation contract, including explicit team authorization, credential lifecycle, and offline detection. Keep online state, dispatch approval, and compute grants distinct; execution belongs to later increments.
 2. Decide when to add automated browser regression tests; current browser evidence is a CLI walkthrough.
 3. Design invitations, administration, and password recovery before a team-usable release.
 4. Select recoverable OS-backed secret storage before real provider credentials.

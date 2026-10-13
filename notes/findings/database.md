@@ -1,6 +1,6 @@
 # Database findings
 
-Updated 2026-10-04. [Findings index](README.md)
+Updated 2026-10-13. [Findings index](README.md)
 
 ## F003 - Host port and authenticated access
 
@@ -21,6 +21,8 @@ Migrations `001_identity.sql` through `005_catalog_archive.sql` are applied to `
 The final 2026-10-01 check connected as `ark_app` to `ark_dev`, found four migrations, zero users, and zero Workspaces, Agents, or Flows. Thus first-owner setup was still available at that verification; this is a dated observation, not a guarantee that later user activity leaves the database empty.
 
 The 2026-10-04 development check verified migration 005 applied and the runtime connection using `ark_app`. Users, resources, and versions remained at zero, matching the pre-upgrade baseline with four migrations. This records the checked upgrade result; it does not imply that later user activity leaves the database empty.
+
+The 2026-10-13 template increment required no migration or grant change. Read-only development counts before and after verification matched: `ark_app`, five migrations, zero users/resources/versions. The previous empty template schema and fresh fictional browser fixture were individually verified and removed from `ark_test`; the development database and persistent volume were preserved. This remains a dated observation, not a promise about later user activity.
 
 Tests require local `ark_test` and generate unique `ark_test_<hex>` schemas. Cleanup validates database and schema names. Real development setup remains pending; browser accounts are disposable fixtures. Unexpectedly killed tests can leave their own schema behind; inspect and target only those schemas. There is no database-wide reset command.
 
