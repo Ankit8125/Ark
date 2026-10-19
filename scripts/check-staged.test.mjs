@@ -139,6 +139,43 @@ test('a recognizable synthetic token is rejected and withheld', (t) => {
   assertBlocked(repo.check(), 'possible GitHub token', token);
 });
 
+for (const [realm, label] of [
+  ['enroll', 'Ark enrollment code'],
+  ['runner', 'Ark runner credential'],
+]) {
+  test(`a staged synthetic ${label} is rejected and withheld`, (t) => {
+    const repo = fixture(t);
+    // Build recognizable credentials at runtime so the fixtures stay publishable.
+    const id = ['00000000', '0000', '4000', '8000', '000000000001'].join('-');
+    const secret = 'b'.repeat(64);
+    const token = ['ark', realm, id, secret].join('_');
+    repo.write('connection.txt', `Authorization: Bearer ${token}\n`);
+    repo.stage('connection.txt');
+    repo.write('connection.txt', 'The working copy no longer contains a credential.\n');
+
+    const result = repo.check();
+    assertBlocked(result, `possible ${label}`, token);
+    assert.equal(`${result.stdout}${result.stderr}`.includes(secret), false,
+      'The secret portion must never appear in output');
+  });
+}
+
+test('Ark credential format examples and stored hashes remain publishable', (t) => {
+  const repo = fixture(t);
+  repo.write('runner-guide.txt', [
+    'Enrollment format: ark_enroll_UUID_64hex',
+    'Runner format: ark_runner_UUID_64hex',
+    `Stored hash: ${'a'.repeat(64)}`,
+    '',
+  ].join('\n'));
+  repo.stage('runner-guide.txt');
+
+  const result = repo.check();
+  assert.equal(result.status, 0);
+  assert.ok(result.stdout.includes('passed for 1 file(s)'));
+  assert.equal(result.stderr, '');
+});
+
 test('safe working-tree edits cannot hide unsafe content already in the index', (t) => {
   const repo = fixture(t);
   const password = ['synthetic', 'staged', 'password', '12345'].join('_');

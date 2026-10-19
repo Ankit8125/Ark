@@ -17,6 +17,7 @@
     "test:guard": "node --test scripts/check-staged.test.mjs",
     "hooks:install": "git config --local core.hooksPath .githooks",
     "dev:api": "pnpm --filter @ark/api dev",
+    "runner:local": "pnpm --filter @ark/runner... build && node apps/runner/dist/index.js",
     "db:test:prepare": "node scripts/database.mjs test-prepare",
     "dev:web": "pnpm --dir apps/web dev",
     "test:unit": "pnpm build:shared && vitest run tests/unit apps/web/src",

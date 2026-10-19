@@ -20,7 +20,14 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import {
   Navigate,
   NavLink,
@@ -35,6 +42,12 @@ import { WorkspaceRoutes } from "./features/workspaces/WorkspaceRoutes";
 import { AgentRoutes } from "./features/agents/AgentRoutes";
 import { FlowRoutes } from "./features/flows/FlowRoutes";
 import { useDraftNavigation } from "./features/catalog/useDraftNavigation";
+
+const ComputePage = lazy(() =>
+  import("./features/compute/ComputePage").then((module) => ({
+    default: module.ComputePage,
+  })),
+);
 
 type Props = {
   me: MeResponse;
@@ -64,6 +77,7 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
   const workspacesPage = location.pathname.startsWith("/workspaces");
   const agentsPage = location.pathname.startsWith("/agents");
   const flowsPage = location.pathname.startsWith("/flows");
+  const computePage = location.pathname === "/compute";
   const catalogPage = workspacesPage || agentsPage || flowsPage;
   const catalogKind = flowsPage ? "flow" : agentsPage ? "agent" : "workspace";
   const { onDraftStatus, confirmLeave, prompt, draftStatus } =
@@ -319,10 +333,19 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
             {future("Tools & MCP", Network)}
           </div>
           <div className={styles.navGroup}>
-            <h2>
-              Operate <span>Coming later</span>
-            </h2>
-            {future("Compute", Server)}
+            <h2>Operate</h2>
+            <NavLink
+              to="/compute"
+              className={({ isActive }) =>
+                isActive ? styles.activeNav : styles.navLink
+              }
+              onClick={() => {
+                if (navigationOpen) closeNavigation();
+              }}
+            >
+              <Server size={17} aria-hidden="true" />
+              <span>Compute</span>
+            </NavLink>
             {future("Secrets", KeyRound)}
             {future("Activity", Activity)}
           </div>
@@ -368,7 +391,9 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
                   ? "Agents"
                   : flowsPage
                     ? "Flows"
-                    : "Sessions"}
+                    : computePage
+                      ? "Compute"
+                      : "Sessions"}
             </strong>
           </div>
           <details
@@ -418,8 +443,10 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
               <div>
                 <p>
                   {teamState.refreshError
-                    ? `${teamState.refreshError} Your open ${catalogKind} and draft have been kept. Saving is paused until team access is checked.`
-                    : `Checking updated team access. Your open ${catalogKind} and draft have been kept; saving is temporarily paused.`}
+                    ? `${teamState.refreshError} ${computePage ? "Compute changes are paused until team access is checked." : `Your open ${catalogKind} and draft have been kept. Saving is paused until team access is checked.`}`
+                    : computePage
+                      ? "Checking updated team access. Compute changes are temporarily paused."
+                      : `Checking updated team access. Your open ${catalogKind} and draft have been kept; saving is temporarily paused.`}
                 </p>
                 {teamState.refreshError && (
                   <button
@@ -435,7 +462,7 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
               </div>
             </section>
           )}
-          {!catalogPage && (
+          {!catalogPage && !computePage && (
             <div className={styles.pageHeading}>
               <div>
                 <div className={styles.eyebrow}>Run</div>
@@ -502,6 +529,18 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
             </section>
           ) : (
             <Routes>
+              <Route
+                path="/compute"
+                element={
+                  signingOut ? (
+                    <p role="status">Signing out…</p>
+                  ) : (
+                    <Suspense fallback={<p role="status">Loading Compute…</p>}>
+                      <ComputePage team={team} onExpired={onExpired} />
+                    </Suspense>
+                  )
+                }
+              />
               <Route
                 path="/flows/*"
                 element={

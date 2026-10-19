@@ -47,6 +47,7 @@ export interface SignedInSession {
 
 export interface TeamAccess {
   userId: string;
+  sessionId: string;
   organizationId: string;
   team: TeamRow;
 }
@@ -255,7 +256,7 @@ export class IdentityService {
        JOIN users u ON u.id = s.user_id
        JOIN organization_memberships om ON om.user_id = s.user_id AND om.organization_id = s.organization_id
        JOIN organizations o ON o.id = s.organization_id
-       WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > now()
+       WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > clock_timestamp()
          AND u.disabled_at IS NULL AND om.revoked_at IS NULL
        ${lock ? "FOR SHARE OF s, u, om" : ""}`,
       [tokenHash],
@@ -338,11 +339,27 @@ export class IdentityService {
         "FORBIDDEN",
         "Your team role does not allow catalog changes.",
       );
-    return {
+    const access = {
       userId: identity.user_id,
+      sessionId: identity.session_id,
       organizationId: identity.organization_id,
       team: TeamSchema.parse(team),
     };
+    if (mutation) await this.recheckSessionExpiry(access, mutation.client);
+    return access;
+  }
+
+  async recheckSessionExpiry(
+    access: TeamAccess,
+    client: PoolClient,
+  ): Promise<void> {
+    // authorizeTeam's transaction holds the session and membership locks. Time
+    // can still pass while a later row lock waits, so recheck at the write boundary.
+    const current = await client.query(
+      "SELECT 1 FROM auth_sessions WHERE id=$1 AND expires_at > clock_timestamp()",
+      [access.sessionId],
+    );
+    if (!current.rowCount) throw unauthenticated();
   }
 
   async logout(token: string | undefined): Promise<void> {

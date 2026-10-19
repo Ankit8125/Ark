@@ -1,8 +1,8 @@
 # How the project is organized
 
-Updated 2026-10-13. [Learning index](README.md)
+Updated 2026-10-20. [Learning index](README.md)
 
-Ark is a TypeScript modular monolith: one application with explicit boundaries. This is the implemented structure for local V0.1 identity and V0.2 Workspace/Agent/Flow configuration, including history, archive, and built-in templates. The [template completion record](../progress/2026-10-13-01-template-completion.md) records acceptance and limits. The tree shows relevant implemented files, with repeated configuration and assets omitted.
+Ark is a TypeScript modular monolith: one application with explicit boundaries. This is the implemented structure for local V0.1 identity, V0.2 Workspace/Agent/Flow configuration, and the first V0.3 runner increment. The [template completion record](../progress/2026-10-13-01-template-completion.md) records verified V0.2 acceptance; the [runner checkpoint](../progress/2026-10-20-01-runner-enrollment.md) records the runner increment's verified local acceptance and limits. The tree shows relevant implemented files, with repeated configuration and assets omitted.
 
 ```text
 ark/
@@ -37,6 +37,11 @@ ark/
 |   |   |   |   |-- api.ts             # Flow and pinned-version HTTP adapter
 |   |   |   |   |-- flows.module.css
 |   |   |   |   `-- FlowEditor.test.tsx # Flow DOM regressions
+|   |   |   |-- compute/
+|   |   |   |   |-- ComputePage.tsx    # Enrollment, heartbeat metadata, revocation
+|   |   |   |   |-- api.ts             # Validated runner HTTP adapter
+|   |   |   |   |-- registration.ts    # Registration labels at server observation time
+|   |   |   |   `-- ComputePage.test.tsx # Role, secret, and recovery DOM checks
 |   |   |   `-- catalog/
 |   |   |       |-- useVersionedEditor.ts # Shared save/load/conflict lifecycle
 |   |   |       |-- CatalogEditor.tsx  # Shared form chrome and field component
@@ -59,23 +64,29 @@ ark/
 |   |   |-- ErrorBoundary.test.tsx   # Real React DOM recovery checks
 |   |   |-- App.module.css          # Scoped presentation
 |   |   `-- index.css               # Global tokens and baseline styles
-|   `-- api/src/
-|       |-- server.ts               # Process configuration and startup
-|       |-- app.ts                  # HTTP routes and request guards
-|       |-- identity.ts             # Identity use cases and authorization
-|       |-- workspace-routes.ts     # Workspace HTTP adaptation
-|       |-- workspaces.ts           # Concrete Workspace service/response contract
-|       |-- agent-routes.ts         # Agent HTTP adaptation
-|       |-- agents.ts               # Concrete Agent service/response contract
-|       |-- flow-routes.ts          # Flow HTTP adaptation
-|       |-- flows.ts                # Concrete Flow service/response contract
-|       |-- flow-dependencies.ts    # Locked, scoped immutable version checks
-|       |-- catalog-template-routes.ts # Authenticated team-scoped template reads
-|       |-- catalog-templates.ts    # Original read-only built-in examples
-|       |-- versioned-catalog.ts    # Shared authorized transactions and SQL
-|       |-- credentials.ts          # Password and session-token operations
-|       |-- errors.ts               # Validation and safe API failures
-|       `-- index.ts                # Public factory export
+|   |-- api/src/
+|   |   |-- server.ts               # Process configuration and startup
+|   |   |-- app.ts                  # HTTP routes and request guards
+|   |   |-- identity.ts             # Identity use cases and authorization
+|   |   |-- workspace-routes.ts     # Workspace HTTP adaptation
+|   |   |-- workspaces.ts           # Concrete Workspace service/response contract
+|   |   |-- agent-routes.ts         # Agent HTTP adaptation
+|   |   |-- agents.ts               # Concrete Agent service/response contract
+|   |   |-- flow-routes.ts          # Flow HTTP adaptation
+|   |   |-- flows.ts                # Concrete Flow service/response contract
+|   |   |-- flow-dependencies.ts    # Locked, scoped immutable version checks
+|   |   |-- catalog-template-routes.ts # Authenticated team-scoped template reads
+|   |   |-- catalog-templates.ts    # Original read-only built-in examples
+|   |   |-- versioned-catalog.ts    # Shared authorized transactions and SQL
+|   |   |-- runner-routes.ts        # Human enrollment/revoke and machine HTTP routes
+|   |   |-- runners.ts             # Team service identity, lifecycle, and health
+|   |   |-- credentials.ts          # Password and session-token operations
+|   |   |-- errors.ts               # Validation and safe API failures
+|   |   `-- index.ts                # Public factory export
+|   `-- runner/src/
+|       |-- index.ts                # Foreground CLI and graceful shutdown
+|       |-- input.ts                # Hidden terminal input or stdin pipe
+|       `-- client.ts               # Enrollment, heartbeat, and bounded reconnect
 |-- packages/
 |   |-- contracts/src/
 |   |   |-- index.ts                # Identity schemas and public exports
@@ -85,6 +96,7 @@ ark/
 |   |   |-- catalog-versions.ts     # Paired pins and immutable version DTO
 |   |   |-- catalog-lifecycle.ts    # Archive state filters and expected counters
 |   |   |-- catalog-templates.ts    # Strict example envelopes and unpinned definitions
+|   |   |-- runners.ts             # Credential realms, lifecycle DTOs, and timing
 |   |   `-- catalog-text.ts         # Shared PostgreSQL-safe text validator
 |   `-- db/
 |       |-- src/index.ts            # Pool, transactions, migration runner
@@ -93,7 +105,8 @@ ark/
 |           |-- 002_workspaces.sql
 |           |-- 003_agents.sql
 |           |-- 004_flows.sql
-|           `-- 005_catalog_archive.sql
+|           |-- 005_catalog_archive.sql
+|           `-- 006_runner_enrollment.sql
 |-- scripts/
 |   |-- lib/local-database-url.mjs   # Local maintenance/test URL validation
 |   |-- lib/local-database-url.d.mts # Types for the JavaScript helper
@@ -140,9 +153,11 @@ The second catalog exposed real duplication, so transaction handling and browser
 
 [Built-in templates](12-catalog-templates.md) add authenticated reads of application examples. The browser copies a selected example into a new unsaved draft; Workspace copies need a repository URL, and Flow copies need explicit Workspace/Agent versions. Fresh stage IDs keep each Flow copy independent while preserving its bindings. Ordinary Save uses the existing catalog transaction, so templates need no migration or new storage entity. Template loading preserves manual edits, and late responses cannot populate another team or saved editor.
 
-The next bounded step defines V0.3 local runner enrollment, heartbeat, and revocation before implementation. It must separate enrollment and health from dispatch approval and grants. This does not start sessions, clone repositories, run containers or commands, or call a model.
+[Local runners](13-local-runners.md) add a separate process entrypoint for enrollment and heartbeats. A team admin issues a one-use code through Compute. The API hashes it in a mutable runner record; the foreground CLI exchanges it for a credential generated and retained in process memory. Authenticated heartbeats update server receipt time, and team-authorized reads derive health. Only team admins may revoke, with expected lifecycle revisions protecting against stale decisions. This state is separate from immutable catalog definitions because heartbeats are observations, not new saved configurations.
 
-Extract a repository abstraction when persistence needs a real alternative or repeated query boundaries become difficult to test. Until then, the identity service's parameterized SQL and injected pool keep transaction ownership visible. Separate engine/runner entrypoints belong to their planned milestones, not this review.
+The CLI sends heartbeats every 15 seconds; a server observation older than 60 seconds is offline. Health gives no execution authority: dispatch approval remains false, and there are no grants or jobs. The next bounded contract defines dispatch approval and explicit compute grants before execution. The [runner checkpoint](../progress/2026-10-20-01-runner-enrollment.md) records completed checks and limitations.
+
+Extract a repository abstraction when persistence needs a real alternative or repeated query boundaries become difficult to test. Until then, the identity service's parameterized SQL and injected pool keep transaction ownership visible. The foreground runner now has its own entrypoint because it has a distinct process lifetime; a durable engine entrypoint remains future work.
 
 Use PascalCase for React components and domain types, camelCase for functions/variables, and descriptive lowercase or kebab-case names for infrastructure modules. Keep types beside their owner; infer request/response types from Zod rather than duplicating them in a global `types` folder. Small modules with clear responsibilities satisfy the useful parts of SOLID without speculative layers.
 
@@ -160,7 +175,7 @@ pnpm.cmd test:integration
 pnpm.cmd test:guard
 ```
 
-`test:unit` includes React DOM tests in jsdom as well as contracts and infrastructure checks. jsdom is development-only and does not replace a real browser walkthrough. Integration tests need the already-provisioned local `ark_test` database and Docker running. Run `pnpm.cmd db:prepare` after pulling a new migration; the archive increment adds `005_catalog_archive.sql`.
+`test:unit` includes React DOM tests in jsdom as well as contracts, runner client behavior, and infrastructure checks. jsdom is development-only and does not replace a real browser walkthrough. Integration tests need the already-provisioned local `ark_test` database and Docker running. Run `pnpm.cmd db:prepare` after pulling a new migration; the runner increment adds `006_runner_enrollment.sql`. That command prepares the development database, while `pnpm.cmd db:test:prepare` provisions the separate test database. Test fixtures own and clean up only their generated schemas.
 
 An error boundary handles rendering failures, not every asynchronous callback, failed event handler, or broken application download. Expected request failures continue through the API/form error paths. Logging intentionally trades detailed stack traces for privacy; adding richer diagnostics needs a reviewed, sanitized schema. No remote monitoring service was added. A sound V0.1 foundation is not a claim of production readiness or perfection.
 

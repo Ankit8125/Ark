@@ -2,7 +2,9 @@
 
 An independent, self-hosted development platform being built incrementally: a task becomes a plan, a verified change, a human-approved publication, and a draft pull request. The intended product supports multiple teams with backend-enforced permissions.
 
-**Verified locally: V0.1 identity plus Workspace, Agent, and ordered Flow catalogs with history/restore and archive/unarchive.** Create the first organization, owner, and team through local setup; sign in and save team-owned configuration with immutable versions and stale-edit protection. Browse snapshots, restore one as a new revision, or archive configuration while keeping its history. Flows connect typed stages and pin exact Workspace/Agent versions. Archive protects active Flow dependencies; unarchive revalidates original pins. A Fastify API checks inputs, authentication, explicit team membership, write roles, and dependencies against PostgreSQL. See the [archive acceptance record](notes/progress/2026-10-04-01-archive-completion.md) for automated/browser evidence and cleanup. Session execution, runner enrollment, model calls, and task-to-PR workflows belong to later increments. V0.2 remains incomplete; templates are next.
+**Verified locally: V0.1 identity and the V0.2 catalog milestone, including built-in templates.** Create the first organization, owner, and team through local setup; sign in and save team-owned configuration with immutable versions and stale-edit protection. Browse snapshots, restore one as a new revision, or archive configuration while keeping its history. Flows connect typed stages and pin exact Workspace/Agent versions. Templates fill unsaved drafts; ordinary Save creates independent copies after explicit repository/dependency choices. A Fastify API checks authentication, explicit team membership, write roles, and dependencies against PostgreSQL. See the [V0.2 acceptance record](notes/progress/2026-10-13-01-template-completion.md) for evidence and limits.
+
+**Verified locally: the first V0.3 local runner increment.** Team admins issue one-use enrollment codes and revoke registrations in Compute; team members can read registration and heartbeat status. The foreground CLI keeps credentials in memory, sends a heartbeat every 15 seconds, and appears offline after more than 60 seconds without a heartbeat. Dispatch approval remains unapproved; grants, jobs, repository commands, and model calls are later work. The [runner checkpoint](notes/progress/2026-10-20-01-runner-enrollment.md) records automated and browser acceptance, recovery runs, cleanup, and limits. This increment does not complete V0.3.
 
 ## Start reading
 
@@ -32,6 +34,8 @@ pnpm.cmd dev
 Open **http://127.0.0.1:5173** and create your owner account. `dev` builds shared packages and starts the API on **127.0.0.1:3001** and the frontend together. Vite forwards `/api` requests; only the backend accesses PostgreSQL at **127.0.0.1:5434**. Ports are strict: stop an older Ark development terminal if one is already using them.
 
 `db:prepare` applies checked SQL migrations and creates a restricted `ark_app` runtime role. It preserves an older setup's administrative connection as `MIGRATION_DATABASE_URL` and writes the new runtime `DATABASE_URL` to ignored `.env`. It never creates an owner account. Keep the resulting `.env` with its matching database volume. See [identity and sessions](notes/learning/05-identity-and-sessions.md) for the full flow and limitations.
+
+To connect a local heartbeat runner, issue an enrollment code in **Compute**, then run `pnpm.cmd runner:local` in another terminal and enter the code at its hidden prompt. Keep that process open; restarting it needs a new enrollment. The [local runner guide](notes/learning/13-local-runners.md) explains status, revocation, and recovery. After updating an existing checkout, run `pnpm.cmd db:prepare` to apply migration 006 before using Compute.
 
 ## Available checks
 

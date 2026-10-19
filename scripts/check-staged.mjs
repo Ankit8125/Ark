@@ -26,6 +26,8 @@ const patterns = [
   ['AWS access key', /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/],
   ['provider token', /\bsk-(?:proj-|ant-)?[A-Za-z0-9_-]{24,}\b/],
   ['Slack token', /\bxox[baprs]-[A-Za-z0-9-]{20,}\b/],
+  ['Ark enrollment code', /\bark_enroll_[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}_[a-f0-9]{64}\b/],
+  ['Ark runner credential', /\bark_runner_[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}_[a-f0-9]{64}\b/],
 ];
 
 try {

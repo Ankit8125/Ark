@@ -15,6 +15,8 @@ import { registerAgentRoutes } from "./agent-routes.js";
 import { FlowService } from "./flows.js";
 import { registerFlowRoutes } from "./flow-routes.js";
 import { registerCatalogTemplateRoutes } from "./catalog-template-routes.js";
+import { RunnerService } from "./runners.js";
+import { registerRunnerRoutes } from "./runner-routes.js";
 
 export interface AppOptions {
   pool: Pool;
@@ -204,6 +206,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   registerAgentRoutes(app, new AgentService(options.pool, identity));
   registerFlowRoutes(app, new FlowService(options.pool, identity));
   registerCatalogTemplateRoutes(app, identity);
+  registerRunnerRoutes(app, new RunnerService(options.pool, identity));
   await app.ready();
   return app;
 }
