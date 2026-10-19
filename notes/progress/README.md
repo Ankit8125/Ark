@@ -44,10 +44,11 @@ The original V0.1 browser verification used separate test ports and a separate d
 | 2026-10-05 / 01 | [Built-in template contract and implementation checkpoint](2026-10-05-01-catalog-templates.md) |
 | 2026-10-13 / 01 | [Template acceptance and V0.2 catalog completion](2026-10-13-01-template-completion.md)         |
 | 2026-10-20 / 01 | [Runner implementation and verification checkpoint](2026-10-20-01-runner-enrollment.md) |
+| 2026-10-20 / 02 | [GitHub synchronization](2026-10-20-02-github-sync.md) |
 
 ## Synchronization
 
-History/restore commit `73db9427f6966b357448839ef05f349fd0688c1b` was pushed to `origin/main` on October 3, and remote HEAD matched local HEAD. Archive `b1554c6`, templates `37571f5`, and this runner increment are local work. The runner commit is identifiable with `git log -- notes/progress/2026-10-20-01-runner-enrollment.md`. No push was requested or performed.
+At the user's request, archive `b1554c6`, templates `37571f5`, and runner `725b446` were pushed to `origin/main` on October 20. Remote and local HEAD were verified equal at `725b446173285ce2ae7948fd727e0f5e0360857c`. See the [synchronization record](2026-10-20-02-github-sync.md); this documentation follow-up records the publication. No deployment was performed.
 
 ## Next bounded step
 
