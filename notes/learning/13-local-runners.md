@@ -1,10 +1,10 @@
 # Local runner enrollment and health
 
-Recorded 2026-10-15; updated 2026-10-20 (Asia/Kolkata). [Learning index](README.md) · [Contract](../findings/runner-enrollment.md)
+Recorded 2026-10-15; updated 2026-10-24 (Asia/Kolkata). [Learning index](README.md) · [Contract](../findings/runner-enrollment.md)
 
-Ark's catalogs describe repeatable work: a Workspace supplies repository context, an Agent supplies a role and instructions, and a Flow orders typed steps with explicit version pins. A runner is the local process that will eventually perform authorized work. This first runner increment establishes its identity and connection health. Dispatch approval, compute grants, jobs, repository access, and model calls are separate work.
+Ark's catalogs describe repeatable work: a Workspace supplies repository context, an Agent supplies a role and instructions, and a Flow orders typed steps with explicit version pins. A runner is the local process that will eventually perform authorized work. This guide explains its identity and connection health. The subsequent [compute controls](14-compute-controls.md) add separate approval and use grants; jobs, repository access, and model calls remain later work.
 
-Enrollment, heartbeats, revocation, and Compute are verified locally. The [October 20 checkpoint](../progress/2026-10-20-01-runner-enrollment.md) records automated and browser acceptance, recovery runs, cleanup, and limits. V0.3 as a whole remains incomplete.
+Enrollment, heartbeats, revocation, and Compute are verified locally. The [October 20 checkpoint](../progress/2026-10-20-01-runner-enrollment.md) records automated and browser acceptance, recovery runs, cleanup, and limits. The [October 24 compute-control checkpoint](../progress/2026-10-24-01-compute-controls.md) adds locally accepted approval and explicit grants, completing V0.3. Its focused verification and owner/developer browser walkthrough do not claim another full regression run.
 
 ## Connect a runner
 
@@ -16,7 +16,7 @@ pnpm.cmd db:prepare
 pnpm.cmd dev
 ```
 
-`db:prepare` applies migration 006 and grants the restricted API role access to runner records. The API does not apply migrations at startup. Open Ark, sign in, select your team, and open **Compute**. A current team admin can enter a runner name and choose **Issue enrollment code**. Developers, reviewers, and viewers can inspect their team's registrations but cannot issue or revoke them.
+`db:prepare` applies checked migrations, including 006 for runner records and 007 for approval/grants, and configures the restricted API role. The API does not apply migrations at startup. Open Ark, sign in, select your team, and open **Compute**. A current team admin can enter a runner name and choose **Issue enrollment code**. Developers, reviewers, and viewers can inspect their team's registrations but cannot issue or revoke them.
 
 In another terminal in the Ark project folder:
 
@@ -47,7 +47,7 @@ The API and Origin must be loopback HTTP origins, and the server must explicitly
 | Unknown health    | No heartbeat has arrived, or the registration has been revoked.                      |
 | Online health     | The server received a heartbeat within the last 60 seconds.                          |
 | Offline health    | The latest heartbeat is more than 60 seconds old.                                    |
-| Dispatch approval | Always unapproved in this increment. A heartbeat gives no execution permission.      |
+| Dispatch approval | An admin's separate permission for future dispatch. A heartbeat never grants it.     |
 
 Health is a server observation at the displayed response time. Refresh to update it; the page does not poll. A revoked runner's last heartbeat is historical evidence and does not establish whether the computer itself is on or off.
 
@@ -81,4 +81,4 @@ The foreground client generates its credential before exchanging the code. After
 
 Revocation asks for confirmation. If enrollment changed the lifecycle revision while the page was open, refresh and confirm again. Heartbeats do not change that revision. A retry of an already completed revocation is harmless after current authorization. Offline failures retain loaded metadata and offer retry; access denial clears private runner data.
 
-This increment establishes a local health connection. After its acceptance, the next bounded contract defines dispatch approval and explicit compute grants: which runners can receive work and who may use them. Protected persistent credential storage, compatibility/capacity, and execution also require their own contracts and acceptance evidence. See [current progress](../progress/README.md) for the checks actually completed.
+The initial increment establishes a local health connection. The subsequent [compute-control implementation](14-compute-controls.md) adds approval and explicit member grants: which runners are permitted for future dispatch and who may use them. Its [checkpoint](../progress/2026-10-24-01-compute-controls.md) records local acceptance and limits. Next is the V0.4 durable session contract with a deterministic stub. Protected persistent credential storage, compatibility/capacity, and execution require their own contracts and acceptance evidence. See [current progress](../progress/README.md) for the checks actually completed.

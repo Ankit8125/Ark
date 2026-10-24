@@ -1,8 +1,12 @@
 import {
   RunnerListResponseSchema,
   RunnerResponseSchema,
+  RunnerGrantsResponseSchema,
+  RunnerUseAccessResponseSchema,
   type CreateRunnerEnrollmentRequest,
   type RevokeRunnerRequest,
+  type SetRunnerDispatchApprovalRequest,
+  type SetRunnerUseGrantRequest,
 } from "@ark/contracts";
 import { requestJson } from "../../api";
 
@@ -64,6 +68,80 @@ export const computeApi = {
           return response;
         },
       },
+      { method: "POST", body: JSON.stringify(input), signal },
+    );
+  },
+  grants(
+    teamId: string,
+    runnerId: string,
+    cursor?: string,
+    signal?: AbortSignal,
+  ) {
+    const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+    return requestJson(
+      `/api/teams/${encodeURIComponent(teamId)}/runners/${encodeURIComponent(runnerId)}/grants${query}`,
+      {
+        parse(value: unknown) {
+          const response = RunnerGrantsResponseSchema.parse(value);
+          if (
+            response.runner.teamId !== teamId ||
+            response.runner.id !== runnerId ||
+            new Set(response.members.map((member) => member.userId)).size !==
+              response.members.length
+          )
+            throw new Error("Unexpected runner grant list");
+          return response;
+        },
+      },
+      { signal },
+    );
+  },
+  useAccess(teamId: string, runnerId: string, signal?: AbortSignal) {
+    return requestJson(
+      `/api/teams/${encodeURIComponent(teamId)}/runners/${encodeURIComponent(runnerId)}/use-access`,
+      {
+        parse(value: unknown) {
+          const response = RunnerUseAccessResponseSchema.parse(value);
+          if (
+            response.runner.teamId !== teamId ||
+            response.runner.id !== runnerId
+          )
+            throw new Error("Unexpected runner identity");
+          return response;
+        },
+      },
+      { signal },
+    );
+  },
+  setApproval(
+    teamId: string,
+    runnerId: string,
+    input: SetRunnerDispatchApprovalRequest,
+    signal?: AbortSignal,
+  ) {
+    return requestJson(
+      `/api/teams/${encodeURIComponent(teamId)}/runners/${encodeURIComponent(runnerId)}/dispatch-approval`,
+      {
+        parse(value: unknown) {
+          const response = runnerResponse(teamId, runnerId).parse(value);
+          if (response.runner.dispatchApproved !== input.approved)
+            throw new Error("Unexpected runner approval");
+          return response;
+        },
+      },
+      { method: "POST", body: JSON.stringify(input), signal },
+    );
+  },
+  setGrant(
+    teamId: string,
+    runnerId: string,
+    userId: string,
+    input: SetRunnerUseGrantRequest,
+    signal?: AbortSignal,
+  ) {
+    return requestJson(
+      `/api/teams/${encodeURIComponent(teamId)}/runners/${encodeURIComponent(runnerId)}/grants/${encodeURIComponent(userId)}`,
+      runnerResponse(teamId, runnerId),
       { method: "POST", body: JSON.stringify(input), signal },
     );
   },

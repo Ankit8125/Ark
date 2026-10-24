@@ -706,7 +706,7 @@ describe("Compute enrollment and recovery", () => {
     expect(button("Revoke runner")).toBeUndefined();
   });
 
-  it("preserves registration metadata through an uncertain revoke and can retry", async () => {
+  it("preserves metadata but requires refresh after an uncertain revoke", async () => {
     vi.mocked(computeApi.list).mockResolvedValueOnce(
       list([
         runner({
@@ -723,13 +723,22 @@ describe("Compute enrollment and recovery", () => {
     await open();
     await click("Revoke runner");
     expect(container.textContent).toContain("Online");
-    expect(container.textContent).toContain("response was not confirmed");
+    expect(container.textContent).toContain(
+      "previous request may have succeeded",
+    );
+    await click("Revoke runner");
+    expect(computeApi.revoke).toHaveBeenCalledOnce();
+    expect(button("Revoke runner")!.disabled).toBe(true);
+    vi.mocked(computeApi.list).mockResolvedValueOnce(
+      list([runner({ enrolledAt: observedAt, lifecycleRevision: 3 })]),
+    );
+    await click("Refresh runners");
     await click("Revoke runner");
     expect(
       vi.mocked(computeApi.revoke).mock.calls.map((call) => call[2]),
     ).toEqual([
       { expectedLifecycleRevision: 2 },
-      { expectedLifecycleRevision: 2 },
+      { expectedLifecycleRevision: 3 },
     ]);
   });
 

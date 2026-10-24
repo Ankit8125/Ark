@@ -84,7 +84,9 @@ try {
       await pool.query("GRANT SELECT, INSERT ON audit_events TO ark_app");
       await pool.query("GRANT SELECT, INSERT, UPDATE ON resources TO ark_app");
       await pool.query("GRANT SELECT, INSERT ON resource_versions TO ark_app");
-      await pool.query("GRANT SELECT, INSERT, UPDATE ON runners TO ark_app");
+      await pool.query(
+        "GRANT SELECT, INSERT, UPDATE ON runners, runner_use_grants TO ark_app",
+      );
       await pool.query("GRANT SELECT ON schema_migrations TO ark_app");
       const runtime = createPool(runtimeUrl.toString());
       try {

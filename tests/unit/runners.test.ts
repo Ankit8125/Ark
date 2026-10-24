@@ -12,6 +12,11 @@ import {
   RunnerParamsSchema,
   RunnerResponseSchema,
   RunnerTeamParamsSchema,
+  RunnerGrantParamsSchema,
+  RunnerGrantsResponseSchema,
+  RunnerUseAccessResponseSchema,
+  SetRunnerDispatchApprovalRequestSchema,
+  SetRunnerUseGrantRequestSchema,
 } from "@ark/contracts";
 import { IdentityService } from "../../apps/api/src/identity.js";
 import { RunnerService } from "../../apps/api/src/runners.js";
@@ -166,13 +171,13 @@ describe("local runner contracts", () => {
     ).toBe(false);
   });
 
-  it("keeps response metadata bounded and excludes credentials or execution approval", () => {
+  it("keeps response metadata bounded and excludes credentials and execution readiness", () => {
     expect(RunnerResponseSchema.parse(response)).toEqual(response);
     for (const patch of [
       { enrollmentToken },
       { credentialHash: "a".repeat(64) },
       { runnerCredential },
-      { dispatchApproved: true },
+      { dispatchApproved: "true" },
       { health: "ready" },
       { lastHeartbeatAt: "yesterday" },
       { lifecycleRevision: 0 },
@@ -197,6 +202,103 @@ describe("local runner contracts", () => {
     ).toBe(false);
     expect(
       RunnerListResponseSchema.safeParse({ ...page, nextCursor: "bad-cursor" })
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe("runner compute-control contracts", () => {
+  it("requires explicit booleans and bounded revisions without extra mutation fields", () => {
+    for (const [schema, field] of [
+      [SetRunnerDispatchApprovalRequestSchema, "approved"],
+      [SetRunnerUseGrantRequestSchema, "granted"],
+    ] as const) {
+      for (const value of [true, false])
+        expect(
+          schema.safeParse({ expectedLifecycleRevision: 2, [field]: value })
+            .success,
+        ).toBe(true);
+      for (const value of [undefined, null, "true", 1])
+        expect(
+          schema.safeParse({ expectedLifecycleRevision: 2, [field]: value })
+            .success,
+        ).toBe(false);
+      for (const revision of [undefined, 0, -1, 1.5, "2", 2_147_483_648])
+        expect(
+          schema.safeParse({
+            expectedLifecycleRevision: revision,
+            [field]: true,
+          }).success,
+        ).toBe(false);
+      expect(
+        schema.safeParse({
+          expectedLifecycleRevision: 2,
+          [field]: true,
+          force: true,
+        }).success,
+      ).toBe(false);
+    }
+  });
+
+  it("bounds grant rosters and excludes private or cross-realm fields", () => {
+    const member = {
+      userId: id,
+      displayName: "Team member",
+      role: "developer",
+      eligible: true,
+      granted: false,
+    };
+    const roster = { ...response, members: [member], nextCursor: null };
+    expect(RunnerGrantsResponseSchema.parse(roster)).toEqual(roster);
+    for (const patch of [
+      { email: "member@example.test" },
+      { role: "owner" },
+      { eligible: "yes" },
+      { granted: null },
+      { userId: "unknown" },
+    ])
+      expect(
+        RunnerGrantsResponseSchema.safeParse({
+          ...roster,
+          members: [{ ...member, ...patch }],
+        }).success,
+      ).toBe(false);
+    expect(
+      RunnerGrantsResponseSchema.safeParse({
+        ...roster,
+        members: Array.from({ length: 51 }, () => member),
+      }).success,
+    ).toBe(false);
+    expect(
+      RunnerGrantParamsSchema.safeParse({
+        teamId: id,
+        runnerId: id,
+        userId: otherId,
+      }).success,
+    ).toBe(true);
+    expect(
+      RunnerGrantParamsSchema.safeParse({
+        teamId: id,
+        runnerId: id,
+        userId: "unknown",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("keeps approval, stored grant, use permission, and health separate", () => {
+    const access = {
+      ...response,
+      runner: { ...runner, dispatchApproved: true, health: "offline" },
+      hasUseGrant: true,
+      useAllowed: true,
+    };
+    expect(RunnerUseAccessResponseSchema.parse(access)).toEqual(access);
+    expect(
+      RunnerUseAccessResponseSchema.safeParse({ ...access, ready: true })
+        .success,
+    ).toBe(false);
+    expect(
+      RunnerUseAccessResponseSchema.safeParse({ ...access, grants: [] })
         .success,
     ).toBe(false);
   });

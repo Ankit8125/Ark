@@ -15,7 +15,8 @@ Read these in order or open the topic you need:
 11. [Catalog archive](11-catalog-archive.md): archive/unarchive, active Flow dependencies, and stale lifecycle recovery.
 12. [Catalog templates](12-catalog-templates.md): built-in examples, editable copies, explicit dependency choices, and recovery.
 13. [Local runners](13-local-runners.md): one-use enrollment, foreground CLI, heartbeat health, revocation, and interruption recovery.
+14. [Compute controls](14-compute-controls.md): dispatch approval, explicit member grants, current use permission, and recovery.
 
-The [template completion record](../progress/2026-10-13-01-template-completion.md) records the verified local V0.2 catalog checkpoint. The first V0.3 runner increment is verified locally; the [runner checkpoint](../progress/2026-10-20-01-runner-enrollment.md) records actual checks, recovery runs, cleanup, and limits. It establishes enrollment and health. Dispatch approval and explicit compute grants are the next bounded contract before execution.
+The [template completion record](../progress/2026-10-13-01-template-completion.md) records the verified local V0.2 catalog checkpoint. V0.3 local runner enrollment and compute controls are accepted: the [runner checkpoint](../progress/2026-10-20-01-runner-enrollment.md) preserves connection evidence, and the [compute-control checkpoint](../progress/2026-10-24-01-compute-controls.md) records approval/grants, focused checks, browser acceptance, cleanup, and limits. Durable session execution is the next milestone.
 
 Use [current progress](../progress/README.md) for verification and [findings](../findings/README.md) for durable decisions. Give future topics their own files and keep existing explanations aligned with implemented behavior.

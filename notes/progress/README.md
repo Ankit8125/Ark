@@ -1,19 +1,21 @@
 # Current progress
 
-Updated 2026-10-20 (Asia/Kolkata). Keep this page concise; detailed evidence belongs in dated records.
+Updated 2026-10-24 (Asia/Kolkata). Keep this page concise; detailed evidence belongs in dated records.
 
 ## Current checkpoint
 
-**Verified locally: V0.1 identity, the V0.2 catalog milestone, and the first V0.3 runner enrollment, heartbeat, and revocation increment.** The [runner checkpoint](2026-10-20-01-runner-enrollment.md) records 166 passed integration tests, 281 distinct passed unit/DOM cases across recovery runs, passing build/lint/type/guard checks, browser/foreground-runner acceptance, and completed fixture cleanup. Full V0.3 remains incomplete: dispatch approval/grants and session execution remain future work. The [template completion record](2026-10-13-01-template-completion.md) preserves the catalog checkpoint.
+**Verified locally: V0.1 identity, V0.2 catalogs, and V0.3 local runner enrollment plus compute controls.** The [October 24 checkpoint](2026-10-24-01-compute-controls.md) records dispatch approval, explicit member grants, 25 passed integration checks, 80 passed Compute DOM/API cases, focused schema/build/lint/type checks, browser acceptance, and verified fixture cleanup. Full regression suites were intentionally not repeated. Session execution is the next V0.4 milestone.
+
+The [previous runner checkpoint](2026-10-20-01-runner-enrollment.md) preserves the broader baseline: 166 integration tests, 281 distinct unit/DOM cases across recovery runs, build/lint/type/guard checks, browser/foreground-runner acceptance, and fixture cleanup. The [template completion record](2026-10-13-01-template-completion.md) preserves the catalog checkpoint.
 
 | Area              | Evidence                                                                                                  |
 | ----------------- | --------------------------------------------------------------------------------------------------------- |
-| Database          | Migrations 001–006; restricted ark_app and runner grants checked October 20 |
-| Development setup | Zero users/resources/versions/runners at the October 20 read-only check; first-owner setup remains available |
+| Database          | Migrations 001–007; restricted ark_app and compute-grant privileges checked October 24 |
+| Development setup | Zero users/resources/versions/runners at the October 24 read-only check; first-owner setup remains available |
 | Identity          | One-use atomic bootstrap, Argon2id, hashed opaque sessions, revocation checks                             |
 | Authorization     | Explicit membership, admin/developer catalog writes, kind/team isolation, locked checks, last-owner guard |
-| Automated tests   | 166 integration, 10 guard, and 281 distinct unit/DOM cases passed across full/targeted runs; final Compute 42/42 result supplied by the user |
-| UI                | Catalog acceptance verified; real runner enrollment/recovery, online/offline/revoke, reload, and desktop/mobile acceptance passed |
+| Automated tests   | Latest increment: 25 integration, 80 Compute DOM/API, 10 runner contracts passed; prior full/targeted evidence retained in dated records |
+| UI                | Catalog and runner acceptance verified; approval/grants, response-loss recovery, separate developer identity, reload, revocation, and desktop/mobile acceptance passed |
 | Tooling           | Production build, lint, and strict type checks passed                                                     |
 | Scope             | Loopback development; no production deployment or execution workflow                                      |
 
@@ -45,6 +47,8 @@ The original V0.1 browser verification used separate test ports and a separate d
 | 2026-10-13 / 01 | [Template acceptance and V0.2 catalog completion](2026-10-13-01-template-completion.md)         |
 | 2026-10-20 / 01 | [Runner implementation and verification checkpoint](2026-10-20-01-runner-enrollment.md) |
 | 2026-10-20 / 02 | [GitHub synchronization](2026-10-20-02-github-sync.md) |
+| 2026-10-20 / 03 | [Dispatch approval and compute grants](2026-10-20-03-compute-controls.md) |
+| 2026-10-24 / 01 | [Compute-control verification](2026-10-24-01-compute-controls.md) |
 
 ## Synchronization
 
@@ -52,4 +56,4 @@ At the user's request, archive `b1554c6`, templates `37571f5`, and runner `725b4
 
 ## Next bounded step
 
-Define the bounded dispatch-approval and explicit compute-grant contract before implementation. Keep online status, approval, grants, compatibility, and capacity distinct; jobs, repository commands, model calls, and deletion remain separate increments. Runner acceptance and QA cleanup are complete. The user requested no repeated long suite runs without a new change or unresolved concern.
+Define the V0.4 durable session orchestration contract using a deterministic stub before implementation. Cover idempotent start/events/completion, replay, exclusive ownership, uncertain recovery, and cancellation. Keep online status, approval, grants, compatibility, and capacity distinct; repository commands, model calls, and deletion remain separate increments. V0.3 acceptance and QA cleanup are complete. The user requested focused verification without repeated long suite runs.

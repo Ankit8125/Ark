@@ -4,6 +4,8 @@ Recorded 2026-10-14; updated 2026-10-20 (Asia/Kolkata). [Findings index](README.
 
 ## First V0.3 increment: verified locally
 
+This records the first increment's boundary. The subsequent [compute-control contract](runner-compute-controls.md) extends its fixed-false dispatch approval with admin approval and explicit use grants; consult the [October 24 checkpoint](../progress/2026-10-24-01-compute-controls.md) for accepted implementation, verification, and limits.
+
 An explicit team admin issues a ten-minute enrollment code for a named local runner. The foreground runner exchanges that code for its own identity and sends authenticated heartbeats every 15 seconds. Team members can inspect non-secret registration/health metadata; only team admins can revoke a pending or enrolled runner. This increment is a health connection, with no dispatch approval, grants, capacity claims, jobs, repository commands, containers, or model calls. V0.3 remains incomplete.
 
 The contract below is implemented in shared runner schemas, migration 006, the API runner service/routes, `apps/runner`, and the Compute page. The [October 20 checkpoint](../progress/2026-10-20-01-runner-enrollment.md) records passed automated and browser/foreground-runner acceptance, recovery runs, cleanup, and limits. Full V0.3 compute controls remain separate work.

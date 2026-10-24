@@ -64,7 +64,7 @@ export const RunnerSchema = z.strictObject({
   lastHeartbeatAt: z.iso.datetime().nullable(),
   revokedAt: z.iso.datetime().nullable(),
   health: z.enum(["unknown", "online", "offline"]),
-  dispatchApproved: z.literal(false),
+  dispatchApproved: z.boolean(),
 });
 export const RunnerResponseSchema = z.strictObject({
   runner: RunnerSchema,
@@ -83,3 +83,41 @@ export type CreateRunnerEnrollmentRequest = z.infer<
 >;
 export type EnrollRunnerRequest = z.infer<typeof EnrollRunnerRequestSchema>;
 export type RevokeRunnerRequest = z.infer<typeof RevokeRunnerRequestSchema>;
+
+export const SetRunnerDispatchApprovalRequestSchema = z.strictObject({
+  expectedLifecycleRevision: z.number().int().min(1).max(2_147_483_647),
+  approved: z.boolean(),
+});
+export const SetRunnerUseGrantRequestSchema = z.strictObject({
+  expectedLifecycleRevision: z.number().int().min(1).max(2_147_483_647),
+  granted: z.boolean(),
+});
+export const RunnerGrantParamsSchema = RunnerParamsSchema.extend({
+  userId: z.uuid(),
+});
+export const RunnerGrantMemberSchema = z.strictObject({
+  userId: z.uuid(),
+  displayName: CatalogTextSchema.trim().min(1).max(80),
+  role: z.enum(["admin", "developer", "reviewer", "viewer"]),
+  eligible: z.boolean(),
+  granted: z.boolean(),
+});
+export const RunnerGrantsResponseSchema = RunnerResponseSchema.extend({
+  members: z.array(RunnerGrantMemberSchema).max(50),
+  nextCursor: z.uuid().nullable(),
+});
+export const RunnerUseAccessResponseSchema = RunnerResponseSchema.extend({
+  hasUseGrant: z.boolean(),
+  useAllowed: z.boolean(),
+});
+export type SetRunnerDispatchApprovalRequest = z.infer<
+  typeof SetRunnerDispatchApprovalRequestSchema
+>;
+export type SetRunnerUseGrantRequest = z.infer<
+  typeof SetRunnerUseGrantRequestSchema
+>;
+export type RunnerGrantMember = z.infer<typeof RunnerGrantMemberSchema>;
+export type RunnerGrantsResponse = z.infer<typeof RunnerGrantsResponseSchema>;
+export type RunnerUseAccessResponse = z.infer<
+  typeof RunnerUseAccessResponseSchema
+>;

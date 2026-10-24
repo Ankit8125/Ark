@@ -78,12 +78,12 @@
   margin: 0;
   padding: 0;
 }
-.list li {
+.list > li {
   padding: 22px;
   content-visibility: auto;
   contain-intrinsic-size: auto 240px;
 }
-.list li + li {
+.list > li + li {
   border-top: 1px solid var(--border);
 }
 .rowHeading {
@@ -146,6 +146,49 @@
 .empty p {
   font-size: 13px;
 }
+.accessPanel {
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+  margin-top: 18px;
+}
+.accessPanel h4 {
+  font-size: 13px;
+  font-weight: 600;
+}
+.accessPanel > .actions {
+  margin-top: 16px;
+}
+.memberHeading {
+  margin: 20px 0 12px;
+}
+.memberList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+.memberList > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+}
+.memberList > li + li {
+  border-top: 1px solid var(--border);
+}
+.memberList strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.memberList .hint {
+  margin: 6px 0 0;
+}
+.memberList > li > div {
+  min-width: 0;
+}
+.memberList button {
+  flex-shrink: 0;
+}
 @media (max-width: 600px) {
   .panel {
     padding: 20px 16px;
@@ -155,10 +198,15 @@
     flex-direction: column;
     gap: 8px;
   }
-  .list li {
+  .list > li {
     padding: 20px 16px;
   }
   .facts {
     grid-template-columns: 1fr;
+  }
+  .memberList > li {
+    align-items: start;
+    flex-direction: column;
+    gap: 8px;
   }
 }

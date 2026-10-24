@@ -6,6 +6,9 @@ import {
   RunnerListQuerySchema,
   RunnerParamsSchema,
   RunnerTeamParamsSchema,
+  RunnerGrantParamsSchema,
+  SetRunnerDispatchApprovalRequestSchema,
+  SetRunnerUseGrantRequestSchema,
 } from "@ark/contracts";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -56,6 +59,63 @@ export function registerRunnerRoutes(
       parseRequest(EnrollRunnerRequestSchema, request.body),
     );
   });
+  app.post(
+    "/api/teams/:teamId/runners/:runnerId/dispatch-approval",
+    async (request) => {
+      const { teamId, runnerId } = parseRequest(
+        RunnerParamsSchema,
+        request.params,
+      );
+      parseRequest(z.strictObject({}), request.query);
+      return service.setDispatchApproval(
+        request.cookies.ark_session,
+        teamId,
+        runnerId,
+        parseRequest(SetRunnerDispatchApprovalRequestSchema, request.body),
+      );
+    },
+  );
+  app.post(
+    "/api/teams/:teamId/runners/:runnerId/grants/:userId",
+    async (request) => {
+      const { teamId, runnerId, userId } = parseRequest(
+        RunnerGrantParamsSchema,
+        request.params,
+      );
+      parseRequest(z.strictObject({}), request.query);
+      return service.setUseGrant(
+        request.cookies.ark_session,
+        teamId,
+        runnerId,
+        userId,
+        parseRequest(SetRunnerUseGrantRequestSchema, request.body),
+      );
+    },
+  );
+  app.get("/api/teams/:teamId/runners/:runnerId/grants", async (request) => {
+    const { teamId, runnerId } = parseRequest(
+      RunnerParamsSchema,
+      request.params,
+    );
+    const { cursor } = parseRequest(RunnerListQuerySchema, request.query);
+    return service.grants(
+      request.cookies.ark_session,
+      teamId,
+      runnerId,
+      cursor,
+    );
+  });
+  app.get(
+    "/api/teams/:teamId/runners/:runnerId/use-access",
+    async (request) => {
+      const { teamId, runnerId } = parseRequest(
+        RunnerParamsSchema,
+        request.params,
+      );
+      parseRequest(z.strictObject({}), request.query);
+      return service.useAccess(request.cookies.ark_session, teamId, runnerId);
+    },
+  );
   app.post("/api/runner/heartbeat", async (request) => {
     parseRequest(z.strictObject({}), request.query);
     parseRequest(RunnerHeartbeatRequestSchema, request.body);

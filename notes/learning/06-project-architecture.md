@@ -1,8 +1,8 @@
 # How the project is organized
 
-Updated 2026-10-20. [Learning index](README.md)
+Updated 2026-10-24. [Learning index](README.md)
 
-Ark is a TypeScript modular monolith: one application with explicit boundaries. This is the implemented structure for local V0.1 identity, V0.2 Workspace/Agent/Flow configuration, and the first V0.3 runner increment. The [template completion record](../progress/2026-10-13-01-template-completion.md) records verified V0.2 acceptance; the [runner checkpoint](../progress/2026-10-20-01-runner-enrollment.md) records the runner increment's verified local acceptance and limits. The tree shows relevant implemented files, with repeated configuration and assets omitted.
+Ark is a TypeScript modular monolith: one application with explicit boundaries. This is the implemented structure for local V0.1 identity, V0.2 Workspace/Agent/Flow configuration, and V0.3 runner enrollment plus compute controls. The [template completion record](../progress/2026-10-13-01-template-completion.md) records verified V0.2 acceptance; the [runner checkpoint](../progress/2026-10-20-01-runner-enrollment.md) records the first runner increment's verified local acceptance and limits. The [compute-control checkpoint](../progress/2026-10-24-01-compute-controls.md) records focused checks and browser acceptance completing local V0.3, with the full regression suites deliberately not repeated. The tree shows relevant implemented files, with repeated configuration and assets omitted.
 
 ```text
 ark/
@@ -38,10 +38,12 @@ ark/
 |   |   |   |   |-- flows.module.css
 |   |   |   |   `-- FlowEditor.test.tsx # Flow DOM regressions
 |   |   |   |-- compute/
-|   |   |   |   |-- ComputePage.tsx    # Enrollment, heartbeat metadata, revocation
+|   |   |   |   |-- ComputePage.tsx    # Enrollment, health, revocation, access panel
+|   |   |   |   |-- RunnerAccessPanel.tsx # Approval, member grants, personal permission
 |   |   |   |   |-- api.ts             # Validated runner HTTP adapter
 |   |   |   |   |-- registration.ts    # Registration labels at server observation time
-|   |   |   |   `-- ComputePage.test.tsx # Role, secret, and recovery DOM checks
+|   |   |   |   |-- ComputePage.test.tsx # Role, secret, and recovery DOM checks
+|   |   |   |   `-- ComputeAccess.test.tsx # Permission adapters, roles, stale recovery
 |   |   |   `-- catalog/
 |   |   |       |-- useVersionedEditor.ts # Shared save/load/conflict lifecycle
 |   |   |       |-- CatalogEditor.tsx  # Shared form chrome and field component
@@ -78,8 +80,8 @@ ark/
 |   |   |-- catalog-template-routes.ts # Authenticated team-scoped template reads
 |   |   |-- catalog-templates.ts    # Original read-only built-in examples
 |   |   |-- versioned-catalog.ts    # Shared authorized transactions and SQL
-|   |   |-- runner-routes.ts        # Human enrollment/revoke and machine HTTP routes
-|   |   |-- runners.ts             # Team service identity, lifecycle, and health
+|   |   |-- runner-routes.ts        # Human runner/access and machine HTTP routes
+|   |   |-- runners.ts             # Identity, lifecycle, health, approval, and grants
 |   |   |-- credentials.ts          # Password and session-token operations
 |   |   |-- errors.ts               # Validation and safe API failures
 |   |   `-- index.ts                # Public factory export
@@ -106,7 +108,8 @@ ark/
 |           |-- 003_agents.sql
 |           |-- 004_flows.sql
 |           |-- 005_catalog_archive.sql
-|           `-- 006_runner_enrollment.sql
+|           |-- 006_runner_enrollment.sql
+|           `-- 007_runner_compute_controls.sql
 |-- scripts/
 |   |-- lib/local-database-url.mjs   # Local maintenance/test URL validation
 |   |-- lib/local-database-url.d.mts # Types for the JavaScript helper
@@ -155,7 +158,7 @@ The second catalog exposed real duplication, so transaction handling and browser
 
 [Local runners](13-local-runners.md) add a separate process entrypoint for enrollment and heartbeats. A team admin issues a one-use code through Compute. The API hashes it in a mutable runner record; the foreground CLI exchanges it for a credential generated and retained in process memory. Authenticated heartbeats update server receipt time, and team-authorized reads derive health. Only team admins may revoke, with expected lifecycle revisions protecting against stale decisions. This state is separate from immutable catalog definitions because heartbeats are observations, not new saved configurations.
 
-The CLI sends heartbeats every 15 seconds; a server observation older than 60 seconds is offline. Health gives no execution authority: dispatch approval remains false, and there are no grants or jobs. The next bounded contract defines dispatch approval and explicit compute grants before execution. The [runner checkpoint](../progress/2026-10-20-01-runner-enrollment.md) records completed checks and limitations.
+The CLI sends heartbeats every 15 seconds; a server observation older than 60 seconds is offline. Health gives no execution authority. [Compute controls](14-compute-controls.md) add separate admin approval and explicit per-user use grants. Current active admins/developers each need a grant, including the admin who enrolled the runner. The backend locks authorization and runner state for permission writes, rejects stale lifecycle revisions, and audits the desired state atomically. Personal use permission rechecks current eligibility and excludes health, compatibility, and capacity. There are still no jobs. The [runner checkpoint](../progress/2026-10-20-01-runner-enrollment.md) records initial connection acceptance; the [compute-control checkpoint](../progress/2026-10-24-01-compute-controls.md) tracks its subsequent implementation and verification.
 
 Extract a repository abstraction when persistence needs a real alternative or repeated query boundaries become difficult to test. Until then, the identity service's parameterized SQL and injected pool keep transaction ownership visible. The foreground runner now has its own entrypoint because it has a distinct process lifetime; a durable engine entrypoint remains future work.
 
@@ -175,7 +178,7 @@ pnpm.cmd test:integration
 pnpm.cmd test:guard
 ```
 
-`test:unit` includes React DOM tests in jsdom as well as contracts, runner client behavior, and infrastructure checks. jsdom is development-only and does not replace a real browser walkthrough. Integration tests need the already-provisioned local `ark_test` database and Docker running. Run `pnpm.cmd db:prepare` after pulling a new migration; the runner increment adds `006_runner_enrollment.sql`. That command prepares the development database, while `pnpm.cmd db:test:prepare` provisions the separate test database. Test fixtures own and clean up only their generated schemas.
+`test:unit` includes React DOM tests in jsdom as well as contracts, runner client behavior, and infrastructure checks. jsdom is development-only and does not replace a real browser walkthrough. Integration tests need the already-provisioned local `ark_test` database and Docker running. Run `pnpm.cmd db:prepare` after pulling a new migration; runner enrollment adds `006_runner_enrollment.sql`, followed by `007_runner_compute_controls.sql` for approval and grants. That command prepares the development database, while `pnpm.cmd db:test:prepare` provisions the separate test database. Test fixtures own and clean up only their generated schemas.
 
 An error boundary handles rendering failures, not every asynchronous callback, failed event handler, or broken application download. Expected request failures continue through the API/form error paths. Logging intentionally trades detailed stack traces for privacy; adding richer diagnostics needs a reviewed, sanitized schema. No remote monitoring service was added. A sound V0.1 foundation is not a claim of production readiness or perfection.
 

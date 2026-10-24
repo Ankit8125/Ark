@@ -4,6 +4,8 @@ import {
   RunnerCredentialSchema,
   RunnerListResponseSchema,
   RunnerResponseSchema,
+  RunnerGrantsResponseSchema,
+  RunnerUseAccessResponseSchema,
   RUNNER_ENROLLMENT_TTL_SECONDS,
   RUNNER_OFFLINE_AFTER_SECONDS,
   type CreateRunnerEnrollmentRequest,
@@ -12,6 +14,10 @@ import {
   type Runner,
   type RunnerListResponse,
   type RunnerResponse,
+  type RunnerGrantsResponse,
+  type RunnerUseAccessResponse,
+  type SetRunnerDispatchApprovalRequest,
+  type SetRunnerUseGrantRequest,
 } from "@ark/contracts";
 import { withTransaction } from "@ark/db";
 import type { Pool, PoolClient } from "pg";
@@ -32,6 +38,7 @@ interface RunnerRow {
   revoked_at: Date | null;
   lifecycle_revision: number;
   created_at: Date;
+  dispatch_approved: boolean;
 }
 
 function machineDenied(): ApiFailure {
@@ -82,7 +89,7 @@ function metadata(row: RunnerRow, observedAt: Date): Runner {
     lastHeartbeatAt: row.last_heartbeat_at?.toISOString() ?? null,
     revokedAt: row.revoked_at?.toISOString() ?? null,
     health,
-    dispatchApproved: false,
+    dispatchApproved: row.dispatch_approved,
   };
 }
 function response(row: RunnerRow, observedAt: Date): RunnerResponse {
@@ -100,11 +107,56 @@ function nextLifecycle(row: RunnerRow): void {
       "The runner lifecycle cannot advance.",
     );
 }
+function exactRevision(row: RunnerRow, expected: number): void {
+  if (row.lifecycle_revision !== expected)
+    throw new ApiFailure(
+      409,
+      "LIFECYCLE_CONFLICT",
+      "The runner changed. Refresh before changing its permissions.",
+    );
+}
+function requireEnrolled(row: RunnerRow): void {
+  if (!row.enrolled_at || row.revoked_at)
+    throw new ApiFailure(
+      409,
+      "RUNNER_UNAVAILABLE",
+      "Only an enrolled, unrevoked runner can receive permissions.",
+    );
+}
+async function scopedRunner(
+  client: PoolClient,
+  access: TeamAccess,
+  runnerId: string,
+  lock: "UPDATE" | "SHARE",
+): Promise<RunnerRow> {
+  const row = (
+    await client.query<RunnerRow>(
+      `SELECT * FROM runners WHERE id=$1 AND organization_id=$2 AND team_id=$3 FOR ${lock}`,
+      [runnerId, access.organizationId, access.team.id],
+    )
+  ).rows[0];
+  if (!row)
+    throw new ApiFailure(
+      404,
+      "NOT_FOUND",
+      "The requested runner was not found.",
+    );
+  return row;
+}
 async function audit(
   client: PoolClient,
   row: RunnerRow,
   actorUserId: string | null,
-  action: "runner.enrollment_issued" | "runner.enrolled" | "runner.revoked",
+  action:
+    | "runner.enrollment_issued"
+    | "runner.enrolled"
+    | "runner.revoked"
+    | "runner.dispatch_approval_changed"
+    | "runner.use_grant_changed",
+  details:
+    | { approved: boolean }
+    | { userId: string; granted: boolean }
+    | undefined = undefined,
 ): Promise<void> {
   await client.query(
     "INSERT INTO audit_events(organization_id,actor_user_id,action,target_id,metadata) VALUES($1,$2,$3,$4,$5::jsonb)",
@@ -117,6 +169,7 @@ async function audit(
         teamId: row.team_id,
         lifecycleRevision: row.lifecycle_revision,
         ...(actorUserId === null ? { actorKind: "runner" } : {}),
+        ...details,
       }),
     ],
   );
@@ -141,7 +194,7 @@ export class RunnerService {
       throw new ApiFailure(
         403,
         "FORBIDDEN",
-        "Only team admins can manage runner enrollment.",
+        "Only team admins can manage runners.",
       );
     return access;
   }
@@ -214,6 +267,214 @@ export class RunnerService {
       if (created)
         await audit(client, row, access.userId, "runner.enrollment_issued");
       return { created, response: response(row, await clock(client)) };
+    });
+  }
+
+  async setDispatchApproval(
+    token: string | undefined,
+    teamId: string,
+    runnerId: string,
+    input: SetRunnerDispatchApprovalRequest,
+  ): Promise<RunnerResponse> {
+    return withTransaction(this.pool, async (client) => {
+      const access = await this.admin(token, teamId, client);
+      let row = await scopedRunner(client, access, runnerId, "UPDATE");
+      await this.identity.recheckSessionExpiry(access, client);
+      exactRevision(row, input.expectedLifecycleRevision);
+      if (input.approved) requireEnrolled(row);
+      if (row.dispatch_approved === input.approved)
+        return response(row, await clock(client));
+      nextLifecycle(row);
+      row = (
+        await client.query<RunnerRow>(
+          `UPDATE runners SET dispatch_approved=$2,lifecycle_revision=lifecycle_revision+1
+           WHERE id=$1 RETURNING *`,
+          [row.id, input.approved],
+        )
+      ).rows[0]!;
+      await this.identity.recheckSessionExpiry(access, client);
+      await audit(
+        client,
+        row,
+        access.userId,
+        "runner.dispatch_approval_changed",
+        {
+          approved: input.approved,
+        },
+      );
+      return response(row, await clock(client));
+    });
+  }
+
+  async setUseGrant(
+    token: string | undefined,
+    teamId: string,
+    runnerId: string,
+    userId: string,
+    input: SetRunnerUseGrantRequest,
+  ): Promise<RunnerResponse> {
+    return withTransaction(this.pool, async (client) => {
+      const access = await this.admin(token, teamId, client);
+      if (input.granted) {
+        // Lock current recipient identity before the runner, in the same order as
+        // actor authorization. A concurrent disable/demotion cannot slip through.
+        const identity = await client.query(
+          `SELECT u.id FROM users u
+           JOIN organization_memberships om ON om.user_id=u.id
+           WHERE u.id=$1 AND om.organization_id=$2
+             AND u.disabled_at IS NULL AND om.revoked_at IS NULL
+           FOR SHARE OF u,om`,
+          [userId, access.organizationId],
+        );
+        const membership = await client.query(
+          `SELECT tm.user_id FROM team_memberships tm
+           WHERE tm.user_id=$1 AND tm.team_id=$2 AND tm.organization_id=$3
+             AND tm.revoked_at IS NULL AND tm.role IN ('admin','developer')
+           FOR SHARE OF tm`,
+          [userId, teamId, access.organizationId],
+        );
+        if (!identity.rowCount || !membership.rowCount)
+          throw new ApiFailure(
+            403,
+            "GRANT_RECIPIENT_INELIGIBLE",
+            "This member is not currently eligible to use compute.",
+          );
+      }
+      let row = await scopedRunner(client, access, runnerId, "UPDATE");
+      await this.identity.recheckSessionExpiry(access, client);
+      exactRevision(row, input.expectedLifecycleRevision);
+      if (input.granted) requireEnrolled(row);
+      const existing = (
+        await client.query<{ granted: boolean }>(
+          "SELECT granted FROM runner_use_grants WHERE runner_id=$1 AND user_id=$2",
+          [row.id, userId],
+        )
+      ).rows[0];
+      if ((existing?.granted ?? false) === input.granted)
+        return response(row, await clock(client));
+      nextLifecycle(row);
+      await client.query(
+        `INSERT INTO runner_use_grants(runner_id,team_id,organization_id,user_id,granted)
+         VALUES($1,$2,$3,$4,$5)
+         ON CONFLICT(runner_id,user_id) DO UPDATE SET granted=EXCLUDED.granted,updated_at=clock_timestamp()`,
+        [row.id, teamId, access.organizationId, userId, input.granted],
+      );
+      row = (
+        await client.query<RunnerRow>(
+          "UPDATE runners SET lifecycle_revision=lifecycle_revision+1 WHERE id=$1 RETURNING *",
+          [row.id],
+        )
+      ).rows[0]!;
+      await this.identity.recheckSessionExpiry(access, client);
+      await audit(client, row, access.userId, "runner.use_grant_changed", {
+        userId,
+        granted: input.granted,
+      });
+      return response(row, await clock(client));
+    });
+  }
+
+  async grants(
+    token: string | undefined,
+    teamId: string,
+    runnerId: string,
+    cursor?: string,
+  ): Promise<RunnerGrantsResponse> {
+    return withTransaction(this.pool, async (client) => {
+      const access = await this.admin(token, teamId, client);
+      // Permission writes lock this row first, so roster grants and revision
+      // describe the same state even when an admin changes access concurrently.
+      const row = await scopedRunner(client, access, runnerId, "SHARE");
+      const members = (
+        await client.query<{
+          userId: string;
+          displayName: string;
+          role: "admin" | "developer" | "reviewer" | "viewer";
+          eligible: boolean;
+          granted: boolean;
+        }>(
+          `SELECT u.id AS "userId",u.display_name AS "displayName",tm.role,
+             (u.disabled_at IS NULL AND om.revoked_at IS NULL AND tm.revoked_at IS NULL
+               AND tm.role IN ('admin','developer')) AS eligible,
+             COALESCE(g.granted,false) AS granted
+           FROM team_memberships tm
+           JOIN users u ON u.id=tm.user_id
+           JOIN organization_memberships om ON om.organization_id=tm.organization_id AND om.user_id=tm.user_id
+           LEFT JOIN runner_use_grants g ON g.runner_id=$1 AND g.user_id=tm.user_id
+           WHERE tm.team_id=$2 AND tm.organization_id=$3 AND ($4::uuid IS NULL OR u.id>$4::uuid)
+             AND ((u.disabled_at IS NULL AND om.revoked_at IS NULL AND tm.revoked_at IS NULL
+               AND tm.role IN ('admin','developer')) OR g.user_id IS NOT NULL)
+           ORDER BY u.id LIMIT 51`,
+          [row.id, teamId, access.organizationId, cursor ?? null],
+        )
+      ).rows;
+      await this.identity.recheckSessionExpiry(access, client);
+      const page = members.slice(0, 50);
+      return RunnerGrantsResponseSchema.parse({
+        ...response(row, await clock(client)),
+        members: page,
+        nextCursor: members.length > 50 ? page.at(-1)!.userId : null,
+      });
+    });
+  }
+
+  async useAccess(
+    token: string | undefined,
+    teamId: string,
+    runnerId: string,
+  ): Promise<RunnerUseAccessResponse> {
+    const access = await this.identity.authorizeTeam(token, teamId);
+    // This is an observation, never an execution ticket. Read all current
+    // eligibility and permission inputs in one snapshot; do not reuse the role
+    // returned by the earlier authorization query to decide use permission.
+    const row = (
+      await this.pool.query<
+        RunnerRow & {
+          has_use_grant: boolean;
+          eligible: boolean;
+          observed_at: Date;
+        }
+      >(
+        `SELECT r.*,COALESCE(g.granted,false) AS has_use_grant,
+           tm.role IN ('admin','developer') AS eligible,clock_timestamp() AS observed_at
+         FROM runners r
+         JOIN auth_sessions s ON s.id=$4 AND s.user_id=$5 AND s.organization_id=r.organization_id
+         JOIN users u ON u.id=s.user_id
+         JOIN organization_memberships om ON om.user_id=u.id AND om.organization_id=r.organization_id
+         JOIN team_memberships tm ON tm.user_id=u.id AND tm.team_id=r.team_id AND tm.organization_id=r.organization_id
+         LEFT JOIN runner_use_grants g ON g.runner_id=r.id AND g.user_id=u.id
+         WHERE r.id=$1 AND r.team_id=$2 AND r.organization_id=$3
+           AND s.revoked_at IS NULL AND s.expires_at>clock_timestamp()
+           AND u.disabled_at IS NULL AND om.revoked_at IS NULL AND tm.revoked_at IS NULL`,
+        [
+          runnerId,
+          teamId,
+          access.organizationId,
+          access.sessionId,
+          access.userId,
+        ],
+      )
+    ).rows[0];
+    if (!row) {
+      // Preserve the existing 401/404 identity boundary if eligibility vanished
+      // during this read, without disclosing another team's runner.
+      await this.identity.authorizeTeam(token, teamId);
+      throw new ApiFailure(
+        404,
+        "NOT_FOUND",
+        "The requested runner was not found.",
+      );
+    }
+    return RunnerUseAccessResponseSchema.parse({
+      ...response(row, row.observed_at),
+      hasUseGrant: row.has_use_grant,
+      useAllowed: !!(
+        row.eligible &&
+        row.has_use_grant &&
+        row.enrolled_at &&
+        row.dispatch_approved &&
+        !row.revoked_at
+      ),
     });
   }
 
@@ -336,7 +597,7 @@ export class RunnerService {
       nextLifecycle(row);
       row = (
         await client.query<RunnerRow>(
-          "UPDATE runners SET revoked_at=$2,lifecycle_revision=lifecycle_revision+1 WHERE id=$1 RETURNING *",
+          "UPDATE runners SET revoked_at=$2,dispatch_approved=false,lifecycle_revision=lifecycle_revision+1 WHERE id=$1 RETURNING *",
           [row.id, observedAt],
         )
       ).rows[0]!;

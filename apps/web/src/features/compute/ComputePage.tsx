@@ -11,6 +11,7 @@ import { ApiRequestError, errorMessage } from "../../api";
 import common from "../../App.module.css";
 import { computeApi, createEnrollment } from "./api";
 import { registrationStatus } from "./registration";
+import { RunnerAccessPanel } from "./RunnerAccessPanel";
 import styles from "./compute.module.css";
 
 type Props = { team: Team; onExpired: () => void };
@@ -26,10 +27,7 @@ function date(value: string) {
 // Changing teams or losing admin access discards request credentials.
 export function ComputePage(props: Props) {
   return (
-    <ComputeContent
-      key={`${props.team.id}:${props.team.role === "admin" ? "admin" : "reader"}`}
-      {...props}
-    />
+    <ComputeContent key={`${props.team.id}:${props.team.role}`} {...props} />
   );
 }
 
@@ -53,6 +51,9 @@ function ComputeContent({ team, onExpired }: Props) {
     stale: boolean;
   } | null>(null);
   const [notice, setNotice] = useState("");
+  const [accessRunner, setAccessRunner] = useState<string | null>(null);
+  const [accessBusy, setAccessBusy] = useState(false);
+  const [accessUncertain, setAccessUncertain] = useState<string[]>([]);
   const enrollment = useRef<CreateRunnerEnrollmentRequest | null>(null);
   const readRequest = useRef<AbortController | null>(null);
   const writeRequest = useRef<AbortController | null>(null);
@@ -62,7 +63,7 @@ function ComputeContent({ team, onExpired }: Props) {
   const nameRef = useRef<HTMLInputElement>(null);
   const onExpiredRef = useRef(onExpired);
   const writable = team.role === "admin" && !writeDenied;
-  const busy = loading || mutation !== null;
+  const busy = loading || mutation !== null || accessBusy;
 
   function clearEnrollment() {
     enrollment.current = null;
@@ -80,11 +81,55 @@ function ComputeContent({ team, onExpired }: Props) {
     setWriteDenied(true);
     setNotice("");
     setRevokeError(null);
+    setAccessRunner(null);
     onExpiredRef.current();
+  }
+
+  function acceptRunner(response: RunnerResponse) {
+    setRevokeError((current) =>
+      current?.id === response.runner.id ? null : current,
+    );
+    setPage(
+      (current) =>
+        current && {
+          ...current,
+          observedAt: response.observedAt,
+          runners: current.runners.map((runner) =>
+            runner.id === response.runner.id ? response.runner : runner,
+          ),
+        },
+    );
+    if (response.runner.enrolledAt || response.runner.revokedAt) {
+      setConfirmed((current) =>
+        current?.runner.id === response.runner.id
+          ? { ...current, token: null }
+          : current,
+      );
+    }
+  }
+
+  function accessDenied(adminOnly: boolean) {
+    clearEnrollment();
+    setAccessRunner(null);
+    setWriteDenied(true);
+    setRevokeError(null);
+    setNotice("");
+    if (!adminOnly) {
+      setPage(null);
+      setReadDenied(true);
+      setListError("Team access was denied.");
+    }
   }
 
   function acceptRead(value: RunnerListResponse, replacesPage = false) {
     setReadDenied(false);
+    setAccessUncertain((current) =>
+      replacesPage
+        ? []
+        : current.filter(
+            (id) => !value.runners.some((runner) => runner.id === id),
+          ),
+    );
     setRevealed(false);
     setConfirmed((current) => {
       const latest = value.runners.find(
@@ -123,6 +168,7 @@ function ComputeContent({ team, onExpired }: Props) {
       setPage(null);
       setReadDenied(true);
       setWriteDenied(true);
+      setAccessRunner(null);
     }
     setListError(errorMessage(error));
   }
@@ -169,6 +215,7 @@ function ComputeContent({ team, onExpired }: Props) {
 
   function refresh() {
     if (writing.current) return;
+    setAccessRunner(null);
     readRequest.current?.abort();
     setLoading(true);
     setListError("");
@@ -228,6 +275,7 @@ function ComputeContent({ team, onExpired }: Props) {
     setNameError("");
     setIssueError("");
     setNotice("");
+    setAccessRunner(null);
     let input = enrollment.current;
     if (!input) {
       try {
@@ -307,7 +355,8 @@ function ComputeContent({ team, onExpired }: Props) {
       reading.current ||
       writing.current ||
       runner.revokedAt ||
-      revokeError?.stale
+      revokeError?.stale ||
+      accessUncertain.includes(runner.id)
     )
       return;
     if (
@@ -316,6 +365,7 @@ function ComputeContent({ team, onExpired }: Props) {
       )
     )
       return;
+    setAccessRunner(null);
     const controller = new AbortController();
     writeRequest.current = controller;
     writing.current = true;
@@ -362,7 +412,7 @@ function ComputeContent({ team, onExpired }: Props) {
         setRevokeError({
           id: runner.id,
           message: errorMessage(error),
-          stale: error instanceof ApiRequestError && error.status === 409,
+          stale: true,
         });
       }
     } finally {
@@ -398,13 +448,14 @@ function ComputeContent({ team, onExpired }: Props) {
       </div>
       <div className={styles.layout}>
         <p className={common.notice}>
-          Enrollment and health are available. Dispatch approval is unapproved;
-          job execution is not available.
+          Enrollment, health, dispatch approval, and use grants are separate.
+          Job execution is not available.
         </p>
         {!writable && (
           <p className={common.notice} role="status">
             You have read-only Compute access. A current team admin can issue
-            enrollment codes and revoke runners.
+            enrollment codes, revoke runners, and manage approval and use
+            grants.
           </p>
         )}
         {writable && (
@@ -640,7 +691,9 @@ function ComputeContent({ team, onExpired }: Props) {
                       </div>
                       <div>
                         <dt>Dispatch approval</dt>
-                        <dd>Unapproved</dd>
+                        <dd>
+                          {runner.dispatchApproved ? "Approved" : "Unapproved"}
+                        </dd>
                       </div>
                       {!runner.enrolledAt && !runner.revokedAt && (
                         <div>
@@ -665,25 +718,75 @@ function ComputeContent({ team, onExpired }: Props) {
                         <p>{revokeError.message}</p>
                         <p>
                           {revokeError.stale
-                            ? "This registration changed. Refresh runners before confirming revocation again."
+                            ? "Refresh runners before confirming revocation again. The registration may have changed or the previous request may have succeeded."
                             : "The response was not confirmed. Refresh runners to check whether revocation succeeded, or retry the same action."}
                         </p>
                       </div>
                     )}
-                    {writable && !runner.revokedAt && (
+                    <div className={styles.actions}>
                       <button
                         type="button"
                         className={common.secondaryButton}
-                        aria-label={`Revoke ${runner.name} (${runner.id})`}
-                        disabled={
-                          busy ||
-                          Boolean(listError) ||
-                          Boolean(revokeError?.stale)
+                        aria-expanded={accessRunner === runner.id}
+                        aria-controls={
+                          accessRunner === runner.id
+                            ? `runner-access-${runner.id}`
+                            : undefined
                         }
-                        onClick={() => void revoke(runner)}
+                        aria-label={`${writable ? "Manage access for" : "Check my access to"} ${runner.name} (${runner.id})`}
+                        disabled={busy || Boolean(listError)}
+                        onClick={() =>
+                          setAccessRunner((current) =>
+                            current === runner.id ? null : runner.id,
+                          )
+                        }
                       >
-                        {mutation === runner.id ? "Revoking…" : "Revoke runner"}
+                        {writable ? "Manage access" : "Check my access"}
                       </button>
+                      {writable && !runner.revokedAt && (
+                        <button
+                          type="button"
+                          className={common.secondaryButton}
+                          aria-label={`Revoke ${runner.name} (${runner.id})`}
+                          disabled={
+                            busy ||
+                            Boolean(listError) ||
+                            Boolean(revokeError?.stale) ||
+                            accessUncertain.includes(runner.id)
+                          }
+                          onClick={() => void revoke(runner)}
+                        >
+                          {mutation === runner.id
+                            ? "Revoking…"
+                            : "Revoke runner"}
+                        </button>
+                      )}
+                    </div>
+                    {accessUncertain.includes(runner.id) &&
+                      accessRunner !== runner.id && (
+                        <p className={styles.hint}>
+                          Refresh runners or reopen access before another
+                          permission or revocation change.
+                        </p>
+                      )}
+                    {accessRunner === runner.id && (
+                      <RunnerAccessPanel
+                        runner={runner}
+                        admin={writable}
+                        disabled={loading || mutation !== null}
+                        onRunner={acceptRunner}
+                        onBusy={setAccessBusy}
+                        onUncertain={(uncertain) =>
+                          setAccessUncertain((current) =>
+                            uncertain
+                              ? [...new Set([...current, runner.id])]
+                              : current.filter((id) => id !== runner.id),
+                          )
+                        }
+                        onDenied={accessDenied}
+                        onExpired={expireSession}
+                        onClose={() => setAccessRunner(null)}
+                      />
                     )}
                   </li>
                 ))}
