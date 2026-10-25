@@ -60,3 +60,4 @@ export type ApiError = z.infer<typeof ApiErrorSchema>;
 export * from "./catalog-templates.js";
 export * from "./runners.js";
 export * from "./sessions.js";
+export * from "./repository-command-plan.js";
