@@ -51,7 +51,7 @@ function machineDenied(): ApiFailure {
 function digest(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
-function bearer(header: string | undefined, realm: "enroll" | "runner") {
+export function runnerBearer(header: string | undefined, realm: "enroll" | "runner") {
   const match = /^Bearer (\S+)$/i.exec(header ?? "");
   // JavaScript's $ also matches before a final newline. The whole header must
   // match so trailing characters cannot disappear before token validation.
@@ -482,8 +482,8 @@ export class RunnerService {
     authorization: string | undefined,
     input: EnrollRunnerRequest,
   ): Promise<RunnerResponse> {
-    const code = bearer(authorization, "enroll");
-    const credential = bearer(`Bearer ${input.runnerCredential}`, "runner");
+    const code = runnerBearer(authorization, "enroll");
+    const credential = runnerBearer(`Bearer ${input.runnerCredential}`, "runner");
     if (code.id !== credential.id) throw machineDenied();
     return withTransaction(this.pool, async (client) => {
       // Discover the issuer without a runner lock, then hold its current identity
@@ -545,7 +545,7 @@ export class RunnerService {
   }
 
   async heartbeat(authorization: string | undefined): Promise<RunnerResponse> {
-    const credential = bearer(authorization, "runner");
+    const credential = runnerBearer(authorization, "runner");
     return withTransaction(this.pool, async (client) => {
       let row = (
         await client.query<RunnerRow>(

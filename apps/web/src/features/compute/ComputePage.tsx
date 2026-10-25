@@ -449,7 +449,7 @@ function ComputeContent({ team, onExpired }: Props) {
       <div className={styles.layout}>
         <p className={common.notice}>
           Enrollment, health, dispatch approval, and use grants are separate.
-          Job execution is not available.
+          Deterministic Sessions require a runner started with stub sessions enabled.
         </p>
         {!writable && (
           <p className={common.notice} role="status">

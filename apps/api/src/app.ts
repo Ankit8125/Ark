@@ -17,6 +17,8 @@ import { registerFlowRoutes } from "./flow-routes.js";
 import { registerCatalogTemplateRoutes } from "./catalog-template-routes.js";
 import { RunnerService } from "./runners.js";
 import { registerRunnerRoutes } from "./runner-routes.js";
+import { SessionService } from "./sessions.js";
+import { registerSessionRoutes } from "./session-routes.js";
 
 export interface AppOptions {
   pool: Pool;
@@ -25,6 +27,7 @@ export interface AppOptions {
   secureCookies?: boolean;
   logger?: boolean;
   sessionTtlSeconds?: number;
+  sessionStreamMilliseconds?: number;
 }
 
 export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
@@ -207,6 +210,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   registerFlowRoutes(app, new FlowService(options.pool, identity));
   registerCatalogTemplateRoutes(app, identity);
   registerRunnerRoutes(app, new RunnerService(options.pool, identity));
+  registerSessionRoutes(app, new SessionService(options.pool, identity), options.sessionStreamMilliseconds);
   await app.ready();
   return app;
 }

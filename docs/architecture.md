@@ -2,6 +2,8 @@
 
 This is the independent project's design, not a description of an existing private platform. Consult [progress](../notes/progress/README.md) for what has actually been built.
 
+Local V0.1–V0.4 are verified, including durable sessions using a deterministic stub in the [October 25 record](../notes/progress/2026-10-25-01-durable-sessions.md). The broader execution diagram below still includes later repository, artifact, secret, and publication boundaries; the implemented stub session boundary is described at the end of this document. Next define the V0.5 isolated repository/real-command contract before implementation.
+
 ## Product and boundaries
 
 A self-hosted organization can have multiple teams, admins, developers, reviewers, and viewers. A solo developer can build and test those roles with separate local accounts. Changing a UI view never grants authority.
@@ -68,7 +70,7 @@ Source revision, working branch, candidate commit, and PR base are distinct fiel
 - Persist protected-effect intent before execution. Lost push/PR responses require inspection and reconciliation before retry. Verify the destination and exact approved commit.
 - Human/API mutations use idempotency and revision checks. Reauthorization applies to reads, streams, downloads, dependency resolution, dispatch, and protected effects.
 
-Planned session states: `queued`, `preparing`, `running`, `waiting_approval`, `blocked`, `cancelling`, `cancelled`, `failed`, `completed`. The last three are terminal. `blocked` retains a concrete reason; uncertainty is never hidden as completion.
+The broader intended session lifecycle also includes preparation and approval waits. V0.4 implements `queued`, `running`, `blocked`, `cancelling`, `cancelled`, `failed`, and `completed`; the last three are terminal. `blocked` retains a concrete reason. Preparation, approval waits, and stage retries belong to later increments.
 
 ## Team, cost, and security contracts
 
@@ -154,4 +156,32 @@ Actor identity/membership locks, recipient locks when granting, then the runner 
 
 Admins read a paginated roster of eligible candidates and retained grant records; other team members can inspect only their own grant and current use permission. Personal access combines current session/user/membership/role, grant, approval, enrollment, and revocation in a fresh database snapshot. This is an observation, not an execution ticket: it excludes health, compatibility, and capacity. Future admission and claim operations must reauthorize in their own transactions.
 
-Compute loads permission details on demand, confirms the exact runner/member and desired action, and requires refresh after stale or uncertain outcomes. Permission data clears on team/session/access loss. The [compute-control checkpoint](../notes/progress/2026-10-24-01-compute-controls.md) records focused checks, owner/developer browser acceptance, and verified disposable-fixture cleanup. Combined with the runner checkpoint, this completes local V0.3 acceptance; full regression suites were deliberately not repeated for the permission increment. Next define the V0.4 deterministic durable session contract. Job dispatch, compatibility/capacity negotiation, session execution, repository commands, containers, and model calls remain later increments. See the [contract](../notes/findings/runner-compute-controls.md) and [guide](../notes/learning/14-compute-controls.md).
+Compute loads permission details on demand, confirms the exact runner/member and desired action, and requires refresh after stale or uncertain outcomes. Permission data clears on team/session/access loss. The [compute-control checkpoint](../notes/progress/2026-10-24-01-compute-controls.md) records focused checks, owner/developer browser acceptance, and verified disposable-fixture cleanup. Combined with the runner checkpoint, this completes local V0.3 acceptance; full regression suites were deliberately not repeated for the permission increment. The V0.4 boundary below consumes these permissions without treating a saved permission observation as an execution ticket. See the [compute-control contract](../notes/findings/runner-compute-controls.md) and [guide](../notes/learning/14-compute-controls.md).
+
+## Verified local deterministic session boundary
+
+The [durable session contract](../notes/findings/durable-sessions.md) defines the bounded V0.4 implementation. `packages/contracts/src/sessions.ts` owns strict requests/responses, bounded text/JSON values, and pure typed-binding/stub evaluation. Additive migration 008 stores execution sessions, immutable pinned snapshots and inputs, leases, and append-only event/receipt records. This increment adds no dependencies or external orchestration service, including Temporal. PostgreSQL remains the durable queue and journal.
+
+```text
+Sessions draft: explicit Flow version + runner + typed input values
+  -> authorized preview: validate and copy definitions; save no session
+  -> explicit queue: atomic pinned snapshot + queued session + first event
+  -> opted-in foreground runner claims one saved assignment through the API
+  -> pure stub resolves declared input bindings and returns deterministic outputs
+  -> API reauthorizes and validates outputs before saving progress/events
+  -> Sessions reads saved detail and replays the authorized event journal
+
+Separate engine entrypoint -> mark expired work leases uncertain; retain ownership
+```
+
+Current team admins/developers with their own explicit runner grant may preview/start supported active Flow versions. The runner must be enrolled, approved, and unrevoked; being offline does not prevent queuing. Start stores the selected Flow definition and its Workspace/Agent definitions with exact version references. Later catalog edits or archival do not change that snapshot. A client-generated creation UUID and the same immutable request permit identical Start replay; a different payload conflicts. Current team members can read session contents; broader resource sharing policies remain V1 work.
+
+The foreground runner keeps machine credentials and lease tokens in memory and connects only through the API. Default startup remains enrollment/heartbeats. `--stub-sessions` explicitly opts in to `stub.v1`, whose stage outputs are validated by the server's same pure evaluator. Agent instructions, model preferences, Workspace actions, and requested capabilities are saved context rather than executed behavior. Session quality remains `not_evaluated`; a completed state establishes completion of the deterministic stub protocol, not tested code or real agent work.
+
+A database partial unique index permits one active or uncertain lease per runner. Each 45-second work lease uses database time and renews after accepted stage progress; registration heartbeats do not renew it. Claim IDs, lease identity/generation/token, worker event IDs, and expected revisions protect replay and concurrent ownership. The original starter's enabled identity, current organization/team memberships, eligible role, and grant are rechecked at claim and ordinary progress/completion. Logging out of the starter's browser alone does not revoke that durable authority. Locks follow actor/recipient identity when needed, then runner, session, and lease.
+
+Queued cancellation is immediate. Active or uncertain cancellation enters `cancelling` while retaining the reservation until the matching runner confirms it has stopped. Expiry records uncertain ownership and blocks ordinary completion; a late result is recovery evidence. If the process or its credential is lost, a current team admin must first revoke the runner in Compute and explicitly confirm the stub has stopped before manual reconciliation releases the reservation as failed/cancelled. A fresh session represents a later run; terminal sessions never reopen.
+
+The web feature lists saved sessions, shows pinned versions, stage progress/outputs, and pages the durable event log. SSE uses session-bound sequence cursors, validates events, deduplicates replay, and closes on terminal state, access loss, or navigation. Every server batch reauthorizes the human reader. Stream errors trigger a fresh detail access check before bounded reconnect attempts; offline failures expose manual controls. A terminal detail read drains bounded HTTP journal pages from the last verified cursor before the UI claims history is up to date; a failed read leaves an explicit refresh state. Uncertain queue responses keep the original request for identical retry and protect the open draft from accidental navigation. The [V0.4 record](../notes/progress/2026-10-25-01-durable-sessions.md) records 130 distinct focused cases across runs, browser acceptance, and exact fixture/service cleanup. Broad suites were not repeated.
+
+`pnpm.cmd db:prepare` applies migrations through 008. `pnpm.cmd dev` starts the API, lease-reconciliation engine, and web; `pnpm.cmd runner:local --stub-sessions` starts a separate opted-in foreground runner. Repository fetching, checkout/path isolation, containers, child processes, commands, provider calls, and publication remain V0.5+ work. The logical lease is not a repository sandbox or a guarantee that arbitrary external processes have stopped.

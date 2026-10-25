@@ -112,6 +112,12 @@ describe("runner contracts and local endpoints", () => {
   });
   it("validates flags and defaults without accepting a credential argument", () => {
     expect(runnerOptions([]).api.origin).toBe("http://127.0.0.1:3001");
+    expect(runnerOptions([]).stubSessions).toBe(false);
+    expect(runnerOptions(["--stub-sessions"]).stubSessions).toBe(true);
+    expect(
+      runnerOptions(["--stub-sessions", "--api", "http://localhost:3002"]).api
+        .origin,
+    ).toBe("http://localhost:3002");
     expect(
       runnerOptions([
         "--api",
@@ -121,11 +127,104 @@ describe("runner contracts and local endpoints", () => {
       ]).origin,
     ).toBe("http://localhost:5184");
     expect(runnerOptions(["--help"]).help).toBe(true);
-    for (const args of [["--token", code], ["--api"], ["--unknown", "value"]])
+    for (const args of [
+      ["--token", code],
+      ["--api"],
+      ["--unknown", "value"],
+      ["--stub-sessions", "--stub-sessions"],
+    ])
       expect(() => runnerOptions(args)).toThrow();
   });
 });
 describe("foreground heartbeat client", () => {
+  it("keeps heartbeats running independently while the opt-in session poll waits", async () => {
+    const { options, fetcher, controller, sleep } = harness();
+    let claims = 0;
+    fetcher.mockImplementation(async (url) => {
+      if (String(url).endsWith("/sessions/claim")) {
+        claims++;
+        return new Response(JSON.stringify({ job: null }));
+      }
+      return ok();
+    });
+    let heartbeats = 0;
+    sleep.mockImplementation(async (ms, signal) => {
+      if (signal.aborted) return;
+      if (ms === 15_000) {
+        if (++heartbeats === 2) controller.abort();
+        return;
+      }
+      await new Promise<void>((resolve) =>
+        signal.addEventListener("abort", () => resolve(), { once: true }),
+      );
+    });
+    await runRunner({ ...options, stubSessions: true });
+    expect(claims).toBe(1);
+    expect(heartbeats).toBe(2);
+    const credential = JSON.parse(
+      String(fetcher.mock.calls[0]![1]!.body),
+    ).runnerCredential;
+    for (const [, init] of fetcher.mock.calls.slice(1)) {
+      expect(init!.redirect).toBe("error");
+      expect(init!.headers).toMatchObject({
+        Authorization: `Bearer ${credential}`,
+      });
+    }
+  });
+  it("bounds a stalled session request with the same finite timeout and abortable transport", async () => {
+    const { options, fetcher, controller, sleep, onStatus } = harness();
+    fetcher.mockImplementation(async (url, init) => {
+      if (String(url).endsWith("/sessions/claim"))
+        return new Promise((_resolve, reject) =>
+          init!.signal!.addEventListener(
+            "abort",
+            () => reject(new Error("Private stalled session details")),
+            { once: true },
+          ),
+        );
+      return ok();
+    });
+    sleep.mockImplementation(async (ms, signal) => {
+      if (ms === 1_000) controller.abort();
+      if (signal.aborted) return;
+      await new Promise<void>((resolve) =>
+        signal.addEventListener("abort", () => resolve(), { once: true }),
+      );
+    });
+    await runRunner({
+      ...options,
+      stubSessions: true,
+      timeoutMilliseconds: 5,
+    });
+    expect(
+      fetcher.mock.calls.filter(([url]) =>
+        String(url).endsWith("/sessions/claim"),
+      ),
+    ).toHaveLength(1);
+    expect(JSON.stringify(onStatus.mock.calls)).not.toContain("Private");
+  });
+  it("stops the whole foreground client when the session API rejects its machine credential", async () => {
+    const { options, fetcher, sleep } = harness();
+    fetcher.mockImplementation(async (url) =>
+      String(url).endsWith("/sessions/claim")
+        ? new Response("private details", { status: 401 })
+        : ok(),
+    );
+    sleep.mockImplementation(async (_ms, signal) => {
+      if (signal.aborted) return;
+      await new Promise<void>((resolve) =>
+        signal.addEventListener("abort", () => resolve(), { once: true }),
+      );
+    });
+    await expect(runRunner({ ...options, stubSessions: true })).rejects.toThrow(
+      "Runner authentication was rejected",
+    );
+    expect(
+      fetcher.mock.calls.filter(([url]) =>
+        String(url).endsWith("/sessions/claim"),
+      ),
+    ).toHaveLength(1);
+  });
   it("enrolls then heartbeats with distinct credentials and no redirects or secret output", async () => {
     const { options, fetcher, onStatus } = harness();
     await runRunner(options);

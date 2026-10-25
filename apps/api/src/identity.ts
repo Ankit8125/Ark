@@ -309,7 +309,7 @@ export class IdentityService {
   async authorizeTeam(
     token: string | undefined,
     teamId: string,
-    mutation?: { client: PoolClient },
+    mutation?: { client: PoolClient; readOnly?: boolean },
   ): Promise<TeamAccess> {
     const client = mutation?.client ?? this.pool;
     // Mutation callers hold these locks until their transaction commits. A
@@ -333,7 +333,12 @@ export class IdentityService {
         "NOT_FOUND",
         "The requested team was not found.",
       );
-    if (mutation && team.role !== "admin" && team.role !== "developer")
+    if (
+      mutation &&
+      !mutation.readOnly &&
+      team.role !== "admin" &&
+      team.role !== "developer"
+    )
       throw new ApiFailure(
         403,
         "FORBIDDEN",

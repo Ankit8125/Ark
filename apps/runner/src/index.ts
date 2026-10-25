@@ -9,7 +9,7 @@ try {
   const options = runnerOptions(process.argv.slice(2));
   if (options.help)
     console.log(
-      "Local heartbeat runner: pnpm.cmd runner:local [--api http://127.0.0.1:3001] [--origin http://127.0.0.1:3001]\nEnter the enrollment code at the hidden prompt or pipe it through stdin. Credentials stay in memory; restart requires new enrollment. No jobs or commands execute.",
+      "Local runner: pnpm.cmd runner:local [--api http://127.0.0.1:3001] [--origin http://127.0.0.1:3001] [--stub-sessions]\nEnter the enrollment code at the hidden prompt or pipe it through stdin. Credentials stay in memory; restart requires new enrollment. Default: heartbeats only. --stub-sessions opts in to deterministic stub sessions; no repository commands or model calls execute.",
     );
   else {
     const enrollmentToken = await readEnrollmentCode(
@@ -34,7 +34,8 @@ try {
       (error.message.startsWith("Use ") ||
         error.message.startsWith("Enrollment code") ||
         error.message.startsWith("Runner authentication") ||
-        error.message.startsWith("Connection did not recover"))
+        error.message.startsWith("Connection did not recover") ||
+        error.message.startsWith("Session connection did not recover"))
         ? error.message
         : "The foreground runner could not continue. Check the local API and enrollment, then try again.";
     console.error(safe);

@@ -5,6 +5,12 @@ import {
   RUNNER_HEARTBEAT_INTERVAL_SECONDS,
   RunnerResponseSchema,
 } from "@ark/contracts";
+import {
+  RunnerRequestError,
+  runStubSessions,
+  type RunnerSleep,
+} from "./sessions.js";
+export { RunnerRequestError } from "./sessions.js";
 
 export function localRunnerUrl(value: string): URL {
   let url: URL;
@@ -32,17 +38,28 @@ export function runnerOptions(args: string[]): {
   api: URL;
   origin: string;
   help: boolean;
+  stubSessions: boolean;
 } {
   let api = "http://127.0.0.1:3001";
   let origin: string | undefined;
+  let stubSessions = false;
   for (let index = 0; index < args.length; index++) {
     const flag = args[index];
     if (flag === "--help" && args.length === 1)
-      return { api: localRunnerUrl(api), origin: api, help: true };
+      return {
+        api: localRunnerUrl(api),
+        origin: api,
+        help: true,
+        stubSessions,
+      };
+    if (flag === "--stub-sessions" && !stubSessions) {
+      stubSessions = true;
+      continue;
+    }
     const value = args[++index];
     if (!value || (flag !== "--api" && flag !== "--origin"))
       throw new Error(
-        "Use --api and optional --origin, or --help. Enter the enrollment code through stdin.",
+        "Use --api, optional --origin and --stub-sessions, or --help. Enter the enrollment code through stdin.",
       );
     if (flag === "--api") api = value;
     else origin = value;
@@ -52,36 +69,20 @@ export function runnerOptions(args: string[]): {
     api: endpoint,
     origin: localRunnerUrl(origin ?? endpoint.origin).origin,
     help: false,
+    stubSessions,
   };
 }
 
-export class RunnerRequestError extends Error {
-  readonly status: number;
-  constructor(status: number) {
-    super(
-      status === 401 || status === 403
-        ? "Runner authentication was rejected. Revoke the old record and issue a new enrollment code if needed."
-        : status === 0
-          ? "Cannot reach the local API."
-          : "The local API rejected the runner request.",
-    );
-    this.status = status;
-  }
-  get retryable() {
-    return this.status === 0 || this.status === 429 || this.status >= 500;
-  }
-}
-
 type Fetch = typeof fetch;
-type Sleep = (milliseconds: number, signal: AbortSignal) => Promise<void>;
 export type RunnerOptions = {
   api: URL;
   origin: string;
   enrollmentToken: string;
   signal: AbortSignal;
   onStatus: (message: string) => void;
+  stubSessions?: boolean;
   fetcher?: Fetch;
-  sleep?: Sleep;
+  sleep?: RunnerSleep;
   timeoutMilliseconds?: number;
 };
 
@@ -91,10 +92,13 @@ export async function runRunner(options: RunnerOptions): Promise<void> {
   const parsed = EnrollmentTokenSchema.safeParse(options.enrollmentToken);
   if (!parsed.success)
     throw new Error("Enrollment code is invalid; its value is withheld.");
-  const id = parsed.data.split("_")[2]!;
+  const enrollmentCode = parsed.data;
+  const id = enrollmentCode.split("_")[2]!;
   const credential = `ark_runner_${id}_${randomBytes(32).toString("hex")}`;
+  const controller = new AbortController();
+  const signal = AbortSignal.any([options.signal, controller.signal]);
   const fetcher = options.fetcher ?? fetch;
-  const sleep: Sleep =
+  const sleep: RunnerSleep =
     options.sleep ??
     (async (milliseconds, signal) => {
       await delay(milliseconds, undefined, { signal });
@@ -104,13 +108,18 @@ export async function runRunner(options: RunnerOptions): Promise<void> {
     throw new Error(
       "Request timeout must be between 1 and 30000 milliseconds.",
     );
-  async function request(path: string, token: string, body: object) {
-    if (options.signal.aborted) throw new Error("Runner stopped.");
+  async function post(
+    path: string,
+    token: string,
+    body: object,
+    requestSignal: AbortSignal = signal,
+  ): Promise<unknown> {
+    if (requestSignal.aborted) throw new Error("Runner stopped.");
     try {
       const response = await fetcher(new URL(path, api), {
         method: "POST",
         redirect: "error",
-        signal: AbortSignal.any([options.signal, AbortSignal.timeout(timeout)]),
+        signal: AbortSignal.any([requestSignal, AbortSignal.timeout(timeout)]),
         headers: {
           "Content-Type": "application/json",
           Origin: origin,
@@ -119,83 +128,112 @@ export async function runRunner(options: RunnerOptions): Promise<void> {
         body: JSON.stringify(body),
       });
       if (!response.ok) throw new RunnerRequestError(response.status);
-      const value = RunnerResponseSchema.safeParse(await response.json());
-      if (
-        !value.success ||
-        value.data.runner.id !== id ||
-        value.data.runner.enrolledAt === null ||
-        value.data.runner.revokedAt !== null
-      )
-        throw new RunnerRequestError(502);
-      return value.data;
+      return await response.json();
     } catch (error) {
-      if (options.signal.aborted) throw error;
+      if (requestSignal.aborted) throw error;
       if (error instanceof RunnerRequestError) throw error;
       throw new RunnerRequestError(0);
     }
   }
-  let connected = false;
-  let enrollmentUncertain = false;
-  let failures = 0;
-  while (!options.signal.aborted) {
-    try {
-      if (!connected) {
-        try {
-          await request("/api/runner/enroll", parsed.data, {
-            runnerCredential: credential,
-          });
-        } catch (error) {
-          if (options.signal.aborted) throw error;
-          if (error instanceof RunnerRequestError && error.retryable)
-            enrollmentUncertain = true;
-          // A lost enrollment response may already have committed. Prove possession
-          // of the candidate credential before retrying the same exchange.
-          try {
-            await request("/api/runner/heartbeat", credential, {});
-          } catch (recoveryError) {
-            // The code may have expired after a committed exchange whose response
-            // was lost. An unavailable heartbeat does not disprove the candidate
-            // identity; keep it until recovery succeeds or authentication rejects it.
-            if (
-              enrollmentUncertain &&
-              recoveryError instanceof RunnerRequestError &&
-              recoveryError.retryable
-            )
-              throw recoveryError;
-            throw error;
-          }
-        }
-        connected = true;
-        options.onStatus(
-          "Runner enrolled. Heartbeats only; execution is unavailable.",
-        );
-      }
-      await request("/api/runner/heartbeat", credential, {});
-      if (failures > 0) options.onStatus("Connection restored.");
-      else if (connected) options.onStatus("Heartbeat accepted.");
-      failures = 0;
-      await sleep(RUNNER_HEARTBEAT_INTERVAL_SECONDS * 1000, options.signal);
-    } catch (error) {
-      if (options.signal.aborted) return;
-      if (!(error instanceof RunnerRequestError) || !error.retryable)
-        throw error;
-      failures++;
-      if (failures >= 10)
-        throw new Error(
-          "Connection did not recover after ten attempts. The foreground runner stopped.",
-        );
-      options.onStatus(
-        "Local API unavailable. Retrying the same runner identity.",
-      );
+  async function request(path: string, token: string, body: object) {
+    const value = RunnerResponseSchema.safeParse(await post(path, token, body));
+    if (
+      !value.success ||
+      value.data.runner.id !== id ||
+      value.data.runner.enrolledAt === null ||
+      value.data.runner.revokedAt !== null
+    )
+      throw new RunnerRequestError(502);
+    return value.data;
+  }
+  let sessionWork: Promise<void> | undefined;
+  let sessionFailure: unknown;
+  async function heartbeats() {
+    let connected = false;
+    let enrollmentUncertain = false;
+    let failures = 0;
+    while (!signal.aborted) {
       try {
-        await sleep(
-          Math.min(1000 * 2 ** (failures - 1), 15_000),
-          options.signal,
-        );
+        if (!connected) {
+          try {
+            await request("/api/runner/enroll", enrollmentCode, {
+              runnerCredential: credential,
+            });
+          } catch (error) {
+            if (signal.aborted) throw error;
+            if (error instanceof RunnerRequestError && error.retryable)
+              enrollmentUncertain = true;
+            // A lost enrollment response may already have committed. Prove possession
+            // of the candidate credential before retrying the same exchange.
+            try {
+              await request("/api/runner/heartbeat", credential, {});
+            } catch (recoveryError) {
+              // The code may have expired after a committed exchange whose response
+              // was lost. An unavailable heartbeat does not disprove the candidate
+              // identity; keep it until recovery succeeds or authentication rejects it.
+              if (
+                enrollmentUncertain &&
+                recoveryError instanceof RunnerRequestError &&
+                recoveryError.retryable
+              )
+                throw recoveryError;
+              throw error;
+            }
+          }
+          connected = true;
+          options.onStatus(
+            options.stubSessions
+              ? "Runner enrolled. Heartbeats and deterministic stub sessions enabled."
+              : "Runner enrolled. Heartbeats only; execution is unavailable.",
+          );
+          if (options.stubSessions)
+            sessionWork = runStubSessions({
+              runnerId: id,
+              signal,
+              onStatus: options.onStatus,
+              request: (path, body, sessionSignal) =>
+                post(path, credential, body, sessionSignal),
+              sleep,
+            }).catch((error: unknown) => {
+              sessionFailure = error;
+              controller.abort();
+            });
+        }
+        await request("/api/runner/heartbeat", credential, {});
+        if (failures > 0) options.onStatus("Connection restored.");
+        else if (connected) options.onStatus("Heartbeat accepted.");
+        failures = 0;
+        await sleep(RUNNER_HEARTBEAT_INTERVAL_SECONDS * 1000, signal);
       } catch (error) {
-        if (options.signal.aborted) return;
-        throw error;
+        if (signal.aborted) return;
+        if (!(error instanceof RunnerRequestError) || !error.retryable)
+          throw error;
+        failures++;
+        if (failures >= 10)
+          throw new Error(
+            "Connection did not recover after ten attempts. The foreground runner stopped.",
+          );
+        options.onStatus(
+          "Local API unavailable. Retrying the same runner identity.",
+        );
+        try {
+          await sleep(Math.min(1000 * 2 ** (failures - 1), 15_000), signal);
+        } catch (error) {
+          if (signal.aborted) return;
+          throw error;
+        }
       }
     }
   }
+  let heartbeatFailure: unknown;
+  try {
+    await heartbeats();
+  } catch (error) {
+    heartbeatFailure = error;
+  } finally {
+    controller.abort();
+    await sessionWork;
+  }
+  if (sessionFailure) throw sessionFailure;
+  if (heartbeatFailure) throw heartbeatFailure;
 }

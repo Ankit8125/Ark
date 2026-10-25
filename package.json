@@ -6,7 +6,7 @@
     "node": ">=24.15 <25"
   },
   "scripts": {
-    "dev": "pnpm build:shared && concurrently --kill-others --names api,web \"pnpm dev:api\" \"pnpm dev:web\"",
+    "dev": "pnpm build:shared && concurrently --kill-others --names api,engine,web \"pnpm dev:api\" \"pnpm dev:engine\" \"pnpm dev:web\"",
     "build": "pnpm -r --sort build",
     "lint": "oxlint apps packages tests scripts",
     "setup:env": "node scripts/setup-env.mjs",
@@ -17,6 +17,7 @@
     "test:guard": "node --test scripts/check-staged.test.mjs",
     "hooks:install": "git config --local core.hooksPath .githooks",
     "dev:api": "pnpm --filter @ark/api dev",
+    "dev:engine": "pnpm --filter @ark/api dev:engine",
     "runner:local": "pnpm --filter @ark/runner... build && node apps/runner/dist/index.js",
     "db:test:prepare": "node scripts/database.mjs test-prepare",
     "dev:web": "pnpm --dir apps/web dev",

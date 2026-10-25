@@ -1510,7 +1510,7 @@ describe("archive migration upgrade", () => {
             "SELECT version FROM schema_migrations ORDER BY version",
           )
         ).rows.at(-1)?.version,
-      ).toBe("007_runner_compute_controls");
+      ).toBe("008_durable_sessions");
       await migrate(legacy);
       expect(
         (
@@ -1518,7 +1518,7 @@ describe("archive migration upgrade", () => {
             "SELECT count(*)::int AS count FROM schema_migrations",
           )
         ).rows[0].count,
-      ).toBe(7);
+      ).toBe(8);
       await expect(
         legacy.query("UPDATE resources SET lifecycle_revision=0 WHERE id=$1", [
           beforeRecords[0].id,

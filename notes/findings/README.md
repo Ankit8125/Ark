@@ -18,6 +18,7 @@ Keep facts and decisions in focused files; distinguish verified behavior from in
 | [Catalog templates](catalog-templates.md)         | Authenticated built-ins, independent drafts, explicit pins, and recovery contract         |
 | [Local runners](runner-enrollment.md)             | One-use enrollment, machine credentials, derived health, revocation, and acceptance scope |
 | [Compute controls](runner-compute-controls.md)    | Approval, explicit per-user grants, current eligibility, stale writes, and acceptance scope |
+| [Durable sessions](durable-sessions.md)          | Pinned starts, stub execution, exclusive leases, idempotent events, SSE, and recovery |
 
 ## Next decisions
 
@@ -25,7 +26,7 @@ The [built-in template contract](catalog-templates.md) defines the completed V0.
 
 V0.3 is accepted locally: the [runner checkpoint](../progress/2026-10-20-01-runner-enrollment.md) preserves enrollment/health evidence, and the [compute-control checkpoint](../progress/2026-10-24-01-compute-controls.md) records approval/grant verification, limits, and cleanup.
 
-1. Define V0.4 durable session orchestration with a deterministic stub: start/event/completion idempotency, replay, exclusive ownership, uncertain recovery, and cancellation. Preserve compute authorization at future execution boundaries.
+1. Build on the [accepted V0.4 checkpoint](../progress/2026-10-25-01-durable-sessions.md) by defining V0.5 isolated repository preparation and real commands: exact source revision, path/process ownership, cleanup, and real report semantics. Preserve compute reauthorization and uncertain ownership across that extension.
 2. Decide when to add automated browser regression tests; current browser evidence is a CLI walkthrough.
 3. Design invitations, administration, and password recovery before a team-usable release.
 4. Select recoverable OS-backed secret storage before real provider credentials.

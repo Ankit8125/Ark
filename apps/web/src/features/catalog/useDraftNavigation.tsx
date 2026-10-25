@@ -5,7 +5,7 @@ import common from "../../App.module.css";
 import styles from "./catalog.module.css";
 
 export function useDraftNavigation(
-  kind: "workspace" | "agent" | "flow" = "workspace",
+  kind: "workspace" | "agent" | "flow" | "session" = "workspace",
 ) {
   const draftRef = useRef<DraftStatus>({ dirty: false, busy: false });
   const [draftStatus, setDraftStatus] = useState<DraftStatus>({
@@ -38,7 +38,11 @@ export function useDraftNavigation(
     if (draftRef.current.busy) return false;
     if (
       draftRef.current.dirty &&
-      !window.confirm(`Discard your unsaved ${kind} changes and leave?`)
+      !window.confirm(
+        kind === "session"
+          ? "Leave this session draft? A queue request may already have saved a session. Check Sessions before creating another."
+          : `Discard your unsaved ${kind} changes and leave?`,
+      )
     )
       return false;
     return true;
@@ -61,7 +65,9 @@ export function useDraftNavigation(
           {draftStatus.busy
             ? "Wait for the request to finish before leaving this page."
             : draftStatus.dirty
-              ? "Your unsaved changes will be discarded."
+              ? kind === "session"
+                ? "This draft will be discarded. A queue request may already have saved a session; check Sessions before creating another."
+                : "Your unsaved changes will be discarded."
               : "Your changes are saved. You can leave this page."}
         </p>
         <div className={common.buttonRow}>

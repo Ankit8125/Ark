@@ -15,7 +15,6 @@ import {
   Play,
   RefreshCw,
   Server,
-  ShieldCheck,
   Users,
   X,
   type LucideIcon,
@@ -48,6 +47,11 @@ const ComputePage = lazy(() =>
     default: module.ComputePage,
   })),
 );
+const SessionPage = lazy(() =>
+  import("./features/sessions/SessionPage").then((module) => ({
+    default: module.SessionPage,
+  })),
+);
 
 type Props = {
   me: MeResponse;
@@ -78,8 +82,14 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
   const agentsPage = location.pathname.startsWith("/agents");
   const flowsPage = location.pathname.startsWith("/flows");
   const computePage = location.pathname === "/compute";
-  const catalogPage = workspacesPage || agentsPage || flowsPage;
-  const catalogKind = flowsPage ? "flow" : agentsPage ? "agent" : "workspace";
+  const sessionsPage = location.pathname === "/sessions";
+  const catalogKind = sessionsPage
+    ? "session"
+    : flowsPage
+      ? "flow"
+      : agentsPage
+        ? "agent"
+        : "workspace";
   const { onDraftStatus, confirmLeave, prompt, draftStatus } =
     useDraftNavigation(catalogKind);
   const [choice, setChoice] = useState(() => rememberedTeam(me));
@@ -462,19 +472,6 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
               </div>
             </section>
           )}
-          {!catalogPage && !computePage && (
-            <div className={styles.pageHeading}>
-              <div>
-                <div className={styles.eyebrow}>Run</div>
-                <h1>Sessions</h1>
-                <p>A shared place to follow work, evidence, and decisions.</p>
-              </div>
-              <span className={styles.scopeBadge}>
-                <Users size={14} aria-hidden="true" />
-                Team workspace
-              </span>
-            </div>
-          )}
           {!selected ? (
             <section className={styles.statusPanel}>
               <Users size={26} aria-hidden="true" />
@@ -574,71 +571,18 @@ export function Shell({ me, onExpired, onLogout, onRefresh }: Props) {
               <Route
                 path="/sessions"
                 element={
-                  <div className={styles.sessionsLayout}>
-                    <section
-                      className={styles.sessionPanel}
-                      aria-labelledby="session-heading"
-                    >
-                      <div className={styles.panelHeading}>
-                        <h2 id="session-heading">Team sessions</h2>
-                        <span>{team.name}</span>
-                      </div>
-                      <div className={styles.emptyState}>
-                        <div className={styles.emptyIcon}>
-                          <GitBranch
-                            size={29}
-                            strokeWidth={1.5}
-                            aria-hidden="true"
-                          />
-                        </div>
-                        <h2>Your workspace is ready</h2>
-                        <p>
-                          Sessions will appear here when execution is available.
-                          Your organization, account, and team are saved.
-                        </p>
-                        <span className={styles.quietBadge}>
-                          Session execution is coming later
-                        </span>
-                      </div>
-                    </section>
-                    <aside
-                      className={styles.contextPanel}
-                      aria-labelledby="context-heading"
-                    >
-                      <h2 id="context-heading">Current context</h2>
-                      <dl>
-                        <div>
-                          <dt>Organization</dt>
-                          <dd>{me.organization.name}</dd>
-                        </div>
-                        <div>
-                          <dt>Team</dt>
-                          <dd>{team.name}</dd>
-                        </div>
-                        <div>
-                          <dt>Organization role</dt>
-                          <dd className={styles.role}>
-                            {me.organization.role}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt>Team role</dt>
-                          <dd className={styles.role}>{team.role}</dd>
-                        </div>
-                      </dl>
-                      <div className={styles.contextNote}>
-                        <ShieldCheck size={17} aria-hidden="true" />
-                        <p>
-                          Access is checked against your current team
-                          membership.
-                        </p>
-                      </div>
-                      <div className={styles.teamId}>
-                        <span>Team ID</span>
-                        <code>{team.id}</code>
-                      </div>
-                    </aside>
-                  </div>
+                  signingOut ? (
+                    <p role="status">Signing out…</p>
+                  ) : (
+                    <Suspense fallback={<p role="status">Loading Sessions…</p>}>
+                      <SessionPage
+                        team={team}
+                        userId={me.user.id}
+                        onExpired={onExpired}
+                        onDraftStatus={onDraftStatus}
+                      />
+                    </Suspense>
+                  )
                 }
               />
               <Route path="*" element={<Navigate to="/sessions" replace />} />

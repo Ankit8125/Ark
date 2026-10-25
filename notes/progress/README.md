@@ -1,23 +1,25 @@
 # Current progress
 
-Updated 2026-10-24 (Asia/Kolkata). Keep this page concise; detailed evidence belongs in dated records.
+Updated 2026-10-25 (Asia/Kolkata). Keep this page concise; detailed evidence belongs in dated records.
 
 ## Current checkpoint
 
-**Verified locally: V0.1 identity, V0.2 catalogs, and V0.3 local runner enrollment plus compute controls.** The [October 24 checkpoint](2026-10-24-01-compute-controls.md) records dispatch approval, explicit member grants, 25 passed integration checks, 80 passed Compute DOM/API cases, focused schema/build/lint/type checks, browser acceptance, and verified fixture cleanup. Full regression suites were intentionally not repeated. Session execution is the next V0.4 milestone.
+**Verified locally: V0.4 durable deterministic-stub sessions.** The [October 25 checkpoint](2026-10-25-01-durable-sessions.md) records pinned sessions, deterministic runner work, durable events, cancellation/recovery, 130 distinct focused cases, browser checks, exact fixture/service cleanup, and staged review. Full regression suites were deliberately skipped. Repository commands and models remain later work.
+
+**Earlier accepted baseline: V0.1 identity, V0.2 catalogs, and V0.3 local runner enrollment plus compute controls.** The [October 24 checkpoint](2026-10-24-01-compute-controls.md) records dispatch approval, explicit member grants, 25 passed integration checks, 80 passed Compute DOM/API cases, focused schema/build/lint/type checks, browser acceptance, and verified fixture cleanup.
 
 The [previous runner checkpoint](2026-10-20-01-runner-enrollment.md) preserves the broader baseline: 166 integration tests, 281 distinct unit/DOM cases across recovery runs, build/lint/type/guard checks, browser/foreground-runner acceptance, and fixture cleanup. The [template completion record](2026-10-13-01-template-completion.md) preserves the catalog checkpoint.
 
 | Area              | Evidence                                                                                                  |
 | ----------------- | --------------------------------------------------------------------------------------------------------- |
-| Database          | Migrations 001–007; restricted ark_app and compute-grant privileges checked October 24 |
-| Development setup | Zero users/resources/versions/runners at the October 24 read-only check; first-owner setup remains available |
+| Database          | Migrations 001–008; restricted ark_app, append-only events, exclusive active/uncertain runner leases |
+| Development setup | Zero users/catalog/runner/session records at the October 25 read-only check; first-owner setup remains available |
 | Identity          | One-use atomic bootstrap, Argon2id, hashed opaque sessions, revocation checks                             |
 | Authorization     | Explicit membership, admin/developer catalog writes, kind/team isolation, locked checks, last-owner guard |
-| Automated tests   | Latest increment: 25 integration, 80 Compute DOM/API, 10 runner contracts passed; prior full/targeted evidence retained in dated records |
-| UI                | Catalog and runner acceptance verified; approval/grants, response-loss recovery, separate developer identity, reload, revocation, and desktop/mobile acceptance passed |
+| Automated tests   | Latest increment: 32 integration, 35 Sessions DOM, 56 runner, and 7 contract cases passed across focused runs; earlier evidence retained in dated records |
+| UI                | Sessions lost-response replay, finite SSE, restart persistence, cancellation, natural expiry/admin recovery, reload, and desktop/mobile checks passed |
 | Tooling           | Production build, lint, and strict type checks passed                                                     |
-| Scope             | Loopback development; no production deployment or execution workflow                                      |
+| Scope             | Loopback development; pure stub orchestration with quality not_evaluated; repository/model work remains future |
 
 The [latest runner record](2026-10-20-01-runner-enrollment.md) distinguishes completed checks, recovery runs, limits, and verified QA cleanup. The [runner guide](../learning/13-local-runners.md) explains enrollment, health, revocation, and commands. The [template](../learning/12-catalog-templates.md), [archive](../learning/11-catalog-archive.md), [history](../learning/10-catalog-history.md), [Flow](../learning/09-flows.md), [Agent](../learning/08-agents.md), and [Workspace](../learning/07-workspaces.md) guides cover catalog behavior. The [architecture guide](../learning/06-project-architecture.md) maps implemented modules and boundaries.
 
@@ -49,6 +51,7 @@ The original V0.1 browser verification used separate test ports and a separate d
 | 2026-10-20 / 02 | [GitHub synchronization](2026-10-20-02-github-sync.md) |
 | 2026-10-20 / 03 | [Dispatch approval and compute grants](2026-10-20-03-compute-controls.md) |
 | 2026-10-24 / 01 | [Compute-control verification](2026-10-24-01-compute-controls.md) |
+| 2026-10-25 / 01 | [Durable deterministic-stub sessions](2026-10-25-01-durable-sessions.md) |
 
 ## Synchronization
 
@@ -56,4 +59,4 @@ At the user's request, archive `b1554c6`, templates `37571f5`, and runner `725b4
 
 ## Next bounded step
 
-Define the V0.4 durable session orchestration contract using a deterministic stub before implementation. Cover idempotent start/events/completion, replay, exclusive ownership, uncertain recovery, and cancellation. Keep online status, approval, grants, compatibility, and capacity distinct; repository commands, model calls, and deletion remain separate increments. V0.3 acceptance and QA cleanup are complete. The user requested focused verification without repeated long suite runs.
+Define the bounded V0.5 repository-preparation/real-command contract before implementation: exact source revision, checkout/path ownership, process cleanup, and real reports with absent tests treated as non-pass. The [V0.4 checkpoint](2026-10-25-01-durable-sessions.md) preserves the accepted orchestration baseline. Keep online status, approval, grants, compatibility, capacity, process status, and quality distinct. The user requested focused verification without repeated long suites.
