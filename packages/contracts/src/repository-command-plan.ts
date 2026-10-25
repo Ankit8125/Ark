@@ -164,6 +164,57 @@ export type RepositoryCommandSelection = z.infer<
 export type RepositoryCommandPlan = z.infer<typeof RepositoryCommandPlanSchema>;
 
 /**
+ * Canonical v1 serialization for saved-plan digests: encode this exact string as
+ * UTF-8, without a BOM or appended newline, before hashing. Parsing validates and
+ * copies every field; explicit field order ignores caller/JSONB property order.
+ * Once persisted, v1 normalization, field order, escaping, and fixed policy/limit
+ * values must stay unchanged. Different semantics require a new plan version.
+ * This represents declared intent, not observed execution or authorization.
+ */
+export function serializeRepositoryCommandPlan(plan: unknown): string {
+  const value = RepositoryCommandPlanSchema.parse(plan);
+  return JSON.stringify({
+    version: value.version,
+    runtime: value.runtime,
+    status: value.status,
+    workspace: {
+      resourceId: value.workspace.resourceId,
+      versionId: value.workspace.versionId,
+    },
+    source: {
+      repositoryUrl: value.source.repositoryUrl,
+      requestedRef: value.source.requestedRef,
+      commitOid: value.source.commitOid,
+    },
+    image: { requested: value.image.requested, pinned: value.image.pinned },
+    action: { kind: value.action.kind, command: value.action.command },
+    workingDirectory: value.workingDirectory,
+    containerDirectory: value.containerDirectory,
+    sandbox: {
+      policy: value.sandbox.policy,
+      shell: value.sandbox.shell,
+      network: value.sandbox.network,
+      readOnlyRoot: value.sandbox.readOnlyRoot,
+      dropAllCapabilities: value.sandbox.dropAllCapabilities,
+      noNewPrivileges: value.sandbox.noNewPrivileges,
+      user: value.sandbox.user,
+    },
+    limits: {
+      preparationSeconds: value.limits.preparationSeconds,
+      commandSeconds: value.limits.commandSeconds,
+      cleanupSeconds: value.limits.cleanupSeconds,
+      runSeconds: value.limits.runSeconds,
+      outputBytesPerChannel: value.limits.outputBytesPerChannel,
+      cpuCount: value.limits.cpuCount,
+      memoryMiB: value.limits.memoryMiB,
+      workspaceMiB: value.limits.workspaceMiB,
+      pids: value.limits.pids,
+      temporaryMiB: value.limits.temporaryMiB,
+    },
+  });
+}
+
+/**
  * Copy declared intent only. The caller must separately authorize and observe
  * the source, image, path, lease, and enforced limits before executing work.
  * No filesystem, subprocess, environment, network, or credential access occurs.

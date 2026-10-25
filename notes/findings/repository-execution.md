@@ -41,8 +41,31 @@ Keep process status separate from test/check verdict. A successful command may s
 
 ## Acceptance and sequence
 
+### Saved-plan API slice (recorded before implementation)
+
+The next backend slice stores **non-dispatchable immutable plans**, independently of runners and execution sessions. This separates reusable declared intent from future execution admission while the repository renewal/adapter protocol is incomplete. No runner enrollment, grant, capacity reservation, job, lease, or work event is required or created by planning. Future execution admission must reauthorize compute, bind the plan to its session/Workspace/Flow context, and establish real ownership separately.
+
+Human-cookie endpoints under `/api/teams/:teamId`:
+
+| Method/path                         | Request/result                                                                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /repository-plan-previews`    | `{workspace:{resourceId,versionId},selection:{action,commitOid,imageDigest}}` -> `{plan,planDigest}`; current team members, no writes/audit |
+| `POST /repository-plans`            | Preview fields plus client UUID `id` -> `{repositoryPlan}`; current admin/developer; 201 new/200 identical replay                           |
+| `GET /repository-plans?cursor=UUID` | Current team members; 50 metadata summaries and `nextCursor`, UUID keyset order; no full commands/definitions in list rows                  |
+| `GET /repository-plans/:planId`     | Current team members; complete saved plan/provenance/digest                                                                                 |
+
+Only these fields are accepted; definitions, commands, policy, limits, compiled plans, and execution flags cannot be supplied by callers. Preview/new Save resolve an active supported Workspace version from the current explicit team under identity/membership and owning-resource SHARE locks. Any selected supported historical version of an active Workspace is valid. An archived, cross-team, wrong-kind, unsupported, missing, or mismatched version receives a generic dependency error. Preview is a read-authorized operation; Save requires the same admin/developer write role as catalog configuration. Preserve exact Host/Origin/JSON requirements and the normal request-size cap.
+
+Migration 009 adds `repository_plans` with tenant/creator/Workspace provenance, normalized request, compiled selected configuration, versioned plan digest, and created time. Composite foreign keys bind the resource kind/team/organization and resource/version pair. Existing immutable catalog versions retain the complete original Workspace definition; the saved plan copies only the selected execution configuration it needs. Runtime access is SELECT/INSERT only; an immutable-row trigger also rejects UPDATE/DELETE. Applied migrations remain unchanged. No execution discriminator is added to the runnable Sessions tables until repository execution admission exists.
+
+The v1 digest is SHA-256 of UTF-8 `serializeRepositoryCommandPlan(plan)`: strict plan-schema parsing reconstructs the fixed v1 field order before JSON serialization, including nested fields. Key order in incoming JSON or PostgreSQL JSONB must not affect it. Limits/policy/version-1 semantics are frozen; future semantic changes require a new supported plan/policy version.
+
+Save atomically writes the plan and one safe audit, validates the concrete response, and rechecks browser-session expiry after blocking work. After identity authorization, a transaction advisory lock serializes the client UUID in the `ark:repository-plan` namespace before current catalog lookup. An identical waiter therefore reads the winner's saved record even if the Workspace was archived in between. Identical ID replay compares normalized request plus creator/team/organization and returns the saved compiled plan without resolving today's catalog or adding audit. A changed request/creator/tenant returns generic `ID_CONFLICT`. Defensive `INSERT ... ON CONFLICT DO NOTHING` handling re-reads and applies the same replay checks; it must not manufacture a conflict for an identical request. A losing insert can wait, so expiry must be rechecked after that wait even when the insertion succeeds after another transaction rolls back. Reads remain separately authorized after catalog archival or later creator-role changes. A saved plan remains `planned_unverified` throughout.
+
+Focused acceptance covers no-write preview, all role/team/org/session boundaries, exact saved versions and selected commands, canonical digest, immutable snapshots after edits/archive, idempotency/concurrent creates and restart reads, expiry/revocation around lock waits, audit/response rollback, bounded summary pagination, runtime privileges/immutability, strict HTTP bodies/queries, and no execution/lease/runner side effects. Real execution admission, work control/renewal, repository adapters, and UI remain later slices.
+
 1. **Shared planning (current slice):** exact identities, digest matching, strict policy/limits, verbatim selected commands, safe lexical directories, deterministic copied plans, clear unverified status; focused pure tests and shared build.
-2. **Storage and API:** additive execution-kind/immutable plan/report schema, read-only authorized preview, atomic idempotent admission, runner compatibility, current authority, renewal/cancellation, report binding, uncertain ownership and recovery; focused PostgreSQL tests.
+2. **Storage and API:** first the non-dispatchable saved-plan API above, then additive execution-kind/report storage, atomic idempotent execution admission, runner compatibility, current authority, renewal/cancellation, report binding, uncertain ownership and recovery; focused PostgreSQL tests.
 3. **Runner adapters:** real exact-source preparation, approved image observation, resource manifests, containment, enforceable budgets, process supervision and verified cleanup; controlled disposable repositories/containers and failure/response-loss checks.
 4. **Session UI and acceptance:** explicit mode/action/source/image choice, separate process/quality/preparation/cleanup reports, honest no-tests outcomes, reload/SSE/cancellation/recovery, desktop/mobile checks, exact fixture/service/resource cleanup. V0.5 remains incomplete until this evidence exists.
 

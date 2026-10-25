@@ -1,10 +1,12 @@
 # Current progress
 
-Updated 2026-10-25 (Asia/Kolkata). Keep this page concise; detailed evidence belongs in dated records.
+Updated 2026-10-26 (Asia/Kolkata). Keep this page concise; detailed evidence belongs in dated records.
 
 ## Current checkpoint
 
-**V0.5 started: contract and shared command planning.** The [second October 25 entry](2026-10-25-02-repository-planning.md) records the [repository contract](../findings/repository-execution.md), pure `planned_unverified` compiler, 18 passed focused cases, and shared build/type/lint checks. Storage, API, runner, and UI integration remain future work; V0.5 is incomplete.
+**V0.5 backend saved plans verified locally.** The [October 26 completion entry](2026-10-26-01-repository-plan-api-verification.md) and [October 25 implementation](2026-10-25-03-repository-plan-api.md) record immutable storage, authorized preview/Save/list/get, frozen plan digests, atomic replay/audit, 36 focused cases, restricted privileges, and cleanup. These non-dispatchable `planned_unverified` plans need no runner. Execution admission, work renewal, adapters, and UI remain future work; V0.5 is incomplete.
+
+The [shared planning entry](2026-10-25-02-repository-planning.md) preserves the original contract/compiler and 18 earlier focused cases.
 
 **Verified locally: V0.4 durable deterministic-stub sessions.** The [October 25 checkpoint](2026-10-25-01-durable-sessions.md) records pinned sessions, deterministic runner work, durable events, cancellation/recovery, 130 distinct focused cases, browser checks, exact fixture/service cleanup, and staged review. Full regression suites were deliberately skipped. Repository commands and models remain later work.
 
@@ -12,16 +14,16 @@ Updated 2026-10-25 (Asia/Kolkata). Keep this page concise; detailed evidence bel
 
 The [previous runner checkpoint](2026-10-20-01-runner-enrollment.md) preserves the broader baseline: 166 integration tests, 281 distinct unit/DOM cases across recovery runs, build/lint/type/guard checks, browser/foreground-runner acceptance, and fixture cleanup. The [template completion record](2026-10-13-01-template-completion.md) preserves the catalog checkpoint.
 
-| Area              | Evidence                                                                                                                                                  |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Database          | Migrations 001–008; restricted ark_app, append-only events, exclusive active/uncertain runner leases                                                      |
-| Development setup | Zero users/catalog/runner/session records at the October 25 read-only check; first-owner setup remains available                                          |
-| Identity          | One-use atomic bootstrap, Argon2id, hashed opaque sessions, revocation checks                                                                             |
-| Authorization     | Explicit membership, admin/developer catalog writes, kind/team isolation, locked checks, last-owner guard                                                 |
-| Automated tests   | Latest increment: 32 integration, 35 Sessions DOM, 56 runner, and 7 contract cases passed across focused runs; earlier evidence retained in dated records |
-| UI                | Sessions lost-response replay, finite SSE, restart persistence, cancellation, natural expiry/admin recovery, reload, and desktop/mobile checks passed     |
-| Tooling           | Production build, lint, and strict type checks passed                                                                                                     |
-| Scope             | Loopback development; pure stub orchestration with quality not_evaluated; repository/model work remains future                                            |
+| Area              | Evidence                                                                                                                                              |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Database          | Migrations 001–009; restricted ark_app, append-only events/plans, exclusive active/uncertain runner leases                                            |
+| Development setup | Zero users/catalog/runner/session records at the October 25 read-only check; first-owner setup remains available                                      |
+| Identity          | One-use atomic bootstrap, Argon2id, hashed opaque sessions, revocation checks                                                                         |
+| Authorization     | Explicit membership, admin/developer catalog writes, kind/team isolation, locked checks, last-owner guard                                             |
+| Automated tests   | Latest slice: 24 saved-plan API, 10 schema/serialization, and 2 migration cases passed; prior session/catalog evidence retained in dated records      |
+| UI                | Sessions lost-response replay, finite SSE, restart persistence, cancellation, natural expiry/admin recovery, reload, and desktop/mobile checks passed |
+| Tooling           | Production build, lint, and strict type checks passed                                                                                                 |
+| Scope             | Loopback development; pure stub orchestration with quality not_evaluated; repository/model work remains future                                        |
 
 The [latest runner record](2026-10-20-01-runner-enrollment.md) distinguishes completed checks, recovery runs, limits, and verified QA cleanup. The [runner guide](../learning/13-local-runners.md) explains enrollment, health, revocation, and commands. The [template](../learning/12-catalog-templates.md), [archive](../learning/11-catalog-archive.md), [history](../learning/10-catalog-history.md), [Flow](../learning/09-flows.md), [Agent](../learning/08-agents.md), and [Workspace](../learning/07-workspaces.md) guides cover catalog behavior. The [architecture guide](../learning/06-project-architecture.md) maps implemented modules and boundaries.
 
@@ -55,6 +57,8 @@ The original V0.1 browser verification used separate test ports and a separate d
 | 2026-10-24 / 01 | [Compute-control verification](2026-10-24-01-compute-controls.md)                              |
 | 2026-10-25 / 01 | [Durable deterministic-stub sessions](2026-10-25-01-durable-sessions.md)                       |
 | 2026-10-25 / 02 | [Repository contract and shared command planning](2026-10-25-02-repository-planning.md)        |
+| 2026-10-25 / 03 | [Immutable saved-plan API](2026-10-25-03-repository-plan-api.md)                               |
+| 2026-10-26 / 01 | [Saved-plan API completion](2026-10-26-01-repository-plan-api-verification.md)                 |
 
 ## Synchronization
 
@@ -62,4 +66,4 @@ At the user's request, archive `b1554c6`, templates `37571f5`, and runner `725b4
 
 ## Next bounded step
 
-Add immutable repository-plan storage and authorized preview/admission/work-control under the [V0.5 contract](../findings/repository-execution.md) before connecting an opted-in real runner adapter. The [planning slice](2026-10-25-02-repository-planning.md) preserves the shared boundary; the [V0.4 checkpoint](2026-10-25-01-durable-sessions.md) remains the accepted runnable baseline. Keep source/image declarations separate from observed identities and process status separate from quality. The user requested focused verification without repeated long suites.
+Define and implement repository execution admission, long-command control/renewal, and preparation/report binding under the [V0.5 contract](../findings/repository-execution.md) before connecting a real runner adapter. The [saved-plan slice](2026-10-25-03-repository-plan-api.md) is ready for that binding; the [V0.4 checkpoint](2026-10-25-01-durable-sessions.md) remains the runnable baseline. Keep declared source/image pins separate from observations and process status separate from quality. Use focused checks without repeated broad suites.

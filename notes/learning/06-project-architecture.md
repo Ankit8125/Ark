@@ -1,6 +1,6 @@
 # How the project is organized
 
-Updated 2026-10-25. [Learning index](README.md)
+Updated 2026-10-26. [Learning index](README.md)
 
 Ark is a TypeScript modular monolith: one application with explicit boundaries. Local V0.1 identity, V0.2 Workspace/Agent/Flow configuration, V0.3 runner enrollment/compute controls, and V0.4 deterministic durable sessions are verified. Their evidence remains in the [template](../progress/2026-10-13-01-template-completion.md), [runner](../progress/2026-10-20-01-runner-enrollment.md), [compute-control](../progress/2026-10-24-01-compute-controls.md), and [October 25 session](../progress/2026-10-25-01-durable-sessions.md) records. The tree shows relevant implemented files, with repeated configuration and assets omitted.
 
@@ -90,6 +90,8 @@ ark/
 |   |   |-- runners.ts             # Identity, lifecycle, health, approval, and grants
 |   |   |-- session-routes.ts       # Human commands/events and machine session routes
 |   |   |-- sessions.ts             # Durable queue, snapshots, leases, events, recovery
+|   |   |-- repository-plan-routes.ts # Authorized preview/save/list/detail endpoints
+|   |   |-- repository-plans.ts     # Immutable unverified plans, replay, digest, audit
 |   |   |-- session-engine.ts       # Lease-expiry reconciliation loop
 |   |   |-- engine.ts               # Separate reconciliation process entrypoint
 |   |   |-- credentials.ts          # Password and session-token operations
@@ -111,6 +113,8 @@ ark/
 |   |   |-- catalog-templates.ts    # Strict example envelopes and unpinned definitions
 |   |   |-- runners.ts             # Credential realms, lifecycle DTOs, and timing
 |   |   |-- sessions.ts             # Session schemas, typed bindings, pure stub evaluator
+|   |   |-- repository-command-plan.ts # Pure selected-command plans and frozen v1 serialization
+|   |   |-- repository-plans.ts     # Strict saved-plan API envelopes and metadata
 |   |   `-- catalog-text.ts         # Shared PostgreSQL-safe text validator
 |   `-- db/
 |       |-- src/index.ts            # Pool, transactions, migration runner
@@ -122,7 +126,8 @@ ark/
 |           |-- 005_catalog_archive.sql
 |           |-- 006_runner_enrollment.sql
 |           |-- 007_runner_compute_controls.sql
-|           `-- 008_durable_sessions.sql
+|           |-- 008_durable_sessions.sql
+|           `-- 009_repository_plans.sql
 |-- scripts/
 |   |-- lib/local-database-url.mjs   # Local maintenance/test URL validation
 |   |-- lib/local-database-url.d.mts # Types for the JavaScript helper
@@ -197,7 +202,7 @@ pnpm.cmd test:integration
 pnpm.cmd test:guard
 ```
 
-`test:unit` includes React DOM tests in jsdom as well as contracts, runner client behavior, and infrastructure checks. jsdom is development-only and does not replace a real browser walkthrough. The list above is the available check set, not a requirement to repeat every suite for each small change. Integration tests need the already-provisioned local `ark_test` database and Docker running. Run `pnpm.cmd db:prepare` after pulling a new migration; migration 008 adds durable sessions after 006 runner enrollment and 007 compute controls. That command prepares the development database, while `pnpm.cmd db:test:prepare` provisions the separate test database. Test fixtures own and clean up only their generated schemas. Consult the dated progress record for actual focused results, skipped checks, and acceptance limits.
+`test:unit` includes React DOM tests in jsdom as well as contracts, runner client behavior, and infrastructure checks. jsdom is development-only and does not replace a real browser walkthrough. The list above is the available check set, not a requirement to repeat every suite for each small change. Integration tests need the already-provisioned local `ark_test` database and Docker running. Run `pnpm.cmd db:prepare` after pulling a new migration; migration 009 adds immutable saved plans after 008 durable sessions, 007 compute controls, and 006 runner enrollment. That command prepares the development database, while `pnpm.cmd db:test:prepare` provisions the separate test database. Test fixtures own and clean up only their generated schemas. Consult the dated progress record for actual focused results, skipped checks, and acceptance limits.
 
 An error boundary handles rendering failures, not every asynchronous callback, failed event handler, or broken application download. Expected request failures continue through the API/form error paths. Logging intentionally trades detailed stack traces for privacy; adding richer diagnostics needs a reviewed, sanitized schema. No remote monitoring service was added. A sound V0.1 foundation is not a claim of production readiness or perfection.
 

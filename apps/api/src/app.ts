@@ -19,6 +19,8 @@ import { RunnerService } from "./runners.js";
 import { registerRunnerRoutes } from "./runner-routes.js";
 import { SessionService } from "./sessions.js";
 import { registerSessionRoutes } from "./session-routes.js";
+import { RepositoryPlanService } from "./repository-plans.js";
+import { registerRepositoryPlanRoutes } from "./repository-plan-routes.js";
 
 export interface AppOptions {
   pool: Pool;
@@ -210,7 +212,15 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   registerFlowRoutes(app, new FlowService(options.pool, identity));
   registerCatalogTemplateRoutes(app, identity);
   registerRunnerRoutes(app, new RunnerService(options.pool, identity));
-  registerSessionRoutes(app, new SessionService(options.pool, identity), options.sessionStreamMilliseconds);
+  registerSessionRoutes(
+    app,
+    new SessionService(options.pool, identity),
+    options.sessionStreamMilliseconds,
+  );
+  registerRepositoryPlanRoutes(
+    app,
+    new RepositoryPlanService(options.pool, identity),
+  );
   await app.ready();
   return app;
 }
