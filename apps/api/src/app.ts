@@ -22,6 +22,8 @@ import { registerSessionRoutes } from "./session-routes.js";
 import { RepositoryPlanService } from "./repository-plans.js";
 import { registerRepositoryPlanRoutes } from "./repository-plan-routes.js";
 import { RepositoryExecutionService } from "./repository-executions.js";
+import { registerRepositoryPreparationReceiptRoutes } from "./repository-preparation-receipt-routes.js";
+import { RepositoryPreparationReceiptService } from "./repository-preparation-receipts.js";
 import { registerRepositoryExecutionRoutes } from "./repository-execution-routes.js";
 
 export interface AppOptions {
@@ -226,6 +228,10 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   registerRepositoryExecutionRoutes(
     app,
     new RepositoryExecutionService(options.pool, identity),
+  );
+  registerRepositoryPreparationReceiptRoutes(
+    app,
+    new RepositoryPreparationReceiptService(options.pool, identity),
   );
   await app.ready();
   return app;

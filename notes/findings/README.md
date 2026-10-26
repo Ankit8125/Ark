@@ -24,11 +24,13 @@ Keep facts and decisions in focused files; distinguish verified behavior from in
 
 ## Next decisions
 
+The [preparation receipt contract](repository-preparation-receipts.md) defines the locally verified journal: exact context and immutable unverified observations, with no authority or capacity effects. Its [October 27 record](../progress/2026-10-27-01-preparation-receipts.md) preserves actual checks and limits.
+
 The [built-in template contract](catalog-templates.md) defines the completed V0.2 example-copy boundary. Acceptance and limits are recorded in the [template completion entry](../progress/2026-10-13-01-template-completion.md).
 
 V0.3 is accepted locally: the [runner checkpoint](../progress/2026-10-20-01-runner-enrollment.md) preserves enrollment/health evidence, and the [compute-control checkpoint](../progress/2026-10-24-01-compute-controls.md) records approval/grant verification, limits, and cleanup.
 
-1. Continue from [verified repository admission/preparation control](../progress/2026-10-26-02-repository-execution-control.md) by defining preparation/process/cleanup receipts and trusted observation binding before a real adapter. Preserve fixed clocks, compute reauthorization, uncertain ownership, and verified cleanup before release.
+1. Continue from the [verified receipt journal](../progress/2026-10-27-01-preparation-receipts.md) by defining explicit command authorization plus process/cleanup receipt contracts tied to exact preparation and an adapter's tested observations/enforcement. Preserve fixed clocks, compute reauthorization, uncertain ownership, and verified cleanup before release.
 2. Decide when to add automated browser regression tests; current browser evidence is a CLI walkthrough.
 3. Design invitations, administration, and password recovery before a team-usable release.
 4. Select recoverable OS-backed secret storage before real provider credentials.

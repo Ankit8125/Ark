@@ -1,8 +1,10 @@
 # Current progress
 
-Updated 2026-10-26 (Asia/Kolkata). Keep this page concise; detailed evidence belongs in dated records.
+Updated 2026-10-27 (Asia/Kolkata). Keep this page concise; detailed evidence belongs in dated records.
 
 ## Current checkpoint
+
+**V0.5 preparation receipt journal verified locally.** The [October 27 step](2026-10-27-01-preparation-receipts.md) records one immutable unverified report per lease, exact plan/resource binding, replay, late diagnostics, authorized reads, 37 distinct focused cases across runs, migration/runtime privileges, and cleanup. It grants no work authority and changes no execution, lease, lifecycle, control, or capacity state. There is no real adapter or command execution/release yet; V0.5 remains incomplete.
 
 **V0.5 repository admission and preparation control verified locally.** The [October 26 preparation-control entry](2026-10-26-02-repository-execution-control.md) records exact saved-plan/Workspace binding, current compute authorization, standalone queued executions, shared runner ownership, preparation-only claim/control, cancellation/expiry, 79 focused cases, populated upgrade coverage, restricted privileges, and cleanup. There is no repository command-start/completion/release endpoint, worker adapter, or UI yet; V0.5 is incomplete.
 
@@ -18,11 +20,11 @@ The [previous runner checkpoint](2026-10-20-01-runner-enrollment.md) preserves t
 
 | Area              | Evidence                                                                                                                                              |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Database          | Migrations 001–010; restricted ark_app, immutable plans/admission, append-only events/controls, global active/uncertain runner leases                 |
-| Development setup | Zero identity/catalog/runner/session/repository records at the October 26 check; first-owner setup remains available                                  |
+| Database          | Migrations 001–011; restricted ark_app, immutable plans/admission/receipts, append-only events/controls, global active/uncertain runner leases        |
+| Development setup | Zero identity/catalog/runner/session/repository/receipt records at the October 27 check; first-owner setup remains available                          |
 | Identity          | One-use atomic bootstrap, Argon2id, hashed opaque sessions, revocation checks                                                                         |
 | Authorization     | Explicit membership, admin/developer catalog writes, kind/team isolation, locked checks, last-owner guard                                             |
-| Automated tests   | Latest slice: 14 schema, 32 repository control, 32 existing stub, and 1 populated-upgrade case passed; earlier evidence retained in dated records     |
+| Automated tests   | Latest slice: 14 schema, 20 receipt API, and 3 migration cases passed across focused runs; earlier evidence retained in dated records                 |
 | UI                | Sessions lost-response replay, finite SSE, restart persistence, cancellation, natural expiry/admin recovery, reload, and desktop/mobile checks passed |
 | Tooling           | Production build, lint, and strict type checks passed                                                                                                 |
 | Scope             | Loopback development; runnable pure stub plus repository planning/admission/preparation controls; real repository commands and models remain future   |
@@ -62,6 +64,7 @@ The original V0.1 browser verification used separate test ports and a separate d
 | 2026-10-25 / 03 | [Immutable saved-plan API](2026-10-25-03-repository-plan-api.md)                               |
 | 2026-10-26 / 01 | [Saved-plan API completion](2026-10-26-01-repository-plan-api-verification.md)                 |
 | 2026-10-26 / 02 | [Repository admission and preparation control](2026-10-26-02-repository-execution-control.md)  |
+| 2026-10-27 / 01 | [Preparation receipt journal](2026-10-27-01-preparation-receipts.md)                           |
 
 ## Synchronization
 
@@ -69,4 +72,4 @@ At the user's request, archive `b1554c6`, templates `37571f5`, and runner `725b4
 
 ## Next bounded step
 
-Define preparation/process/cleanup receipts and trusted observation binding under the [preparation-control contract](../findings/repository-execution-control.md) before connecting a real runner adapter. Require exact plan/lease/generation and observed process/resource cleanup before command authorization or capacity release. Keep declared source/image pins separate from observations and process status separate from quality. The [V0.4 checkpoint](2026-10-25-01-durable-sessions.md) remains the runnable baseline; use focused checks without repeated broad suites.
+Define explicit command authorization and process/cleanup receipt contracts under the [receipt boundary](../findings/repository-preparation-receipts.md), tied to exact preparation/plan/lease/generation, concrete resources, fixed deadlines, and a real adapter's tested observation/enforcement path. Require observed termination/cleanup before capacity release. An unverified journal alone supplies no work authority or quality. The [V0.4 checkpoint](2026-10-25-01-durable-sessions.md) remains the runnable baseline; use focused checks without repeated broad suites.

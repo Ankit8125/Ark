@@ -18,7 +18,7 @@ import { databaseFixture } from "../helpers/database.js";
 
 const sha = (value: string) => createHash("sha256").update(value).digest("hex");
 
-it("upgrades populated 009 stub ownership to 010 without changing legacy data or global runner capacity", async () => {
+it("upgrades populated 009 stub ownership through repository migrations without changing legacy data or global runner capacity", async () => {
   const db = await databaseFixture();
   const schema = `ark_test_${randomBytes(10).toString("hex")}`;
   if (!/^ark_test_[a-f0-9]{20}$/.test(schema))
@@ -322,7 +322,7 @@ it("upgrades populated 009 stub ownership to 010 without changing legacy data or
             "SELECT version FROM schema_migrations ORDER BY version",
           )
         ).rows.at(-1)?.version,
-      ).toBe("010_repository_execution_control");
+      ).toBe("011_repository_preparation_receipts");
 
       const service = new SessionService(
         legacy,
