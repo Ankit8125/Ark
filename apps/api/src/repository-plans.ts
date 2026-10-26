@@ -13,6 +13,7 @@ import {
   type RepositoryPlanPreviewResponse,
   type RepositoryPlanResponse,
   type SaveRepositoryPlanRequest,
+  type SavedRepositoryPlan,
 } from "@ark/contracts";
 import { withTransaction } from "@ark/db";
 import type { Pool, PoolClient } from "pg";
@@ -37,7 +38,7 @@ interface SummaryRow extends Omit<PlanRow, "request" | "plan"> {
   action: RepositoryCommandPlan["action"]["kind"];
 }
 
-function digest(plan: RepositoryCommandPlan): string {
+export function repositoryPlanDigest(plan: RepositoryCommandPlan): string {
   return createHash("sha256")
     .update(serializeRepositoryCommandPlan(plan), "utf8")
     .digest("hex");
@@ -61,7 +62,7 @@ function response(row: PlanRow): RepositoryPlanResponse {
   });
   const saved = value.repositoryPlan;
   if (
-    saved.planDigest !== digest(saved.plan) ||
+    saved.planDigest !== repositoryPlanDigest(saved.plan) ||
     saved.plan.workspace.resourceId !== row.workspace_resource_id ||
     saved.plan.workspace.versionId !== row.workspace_version_id
   )
@@ -106,6 +107,27 @@ async function savedById(
       id,
     ])
   ).rows[0];
+}
+
+/** Caller holds current team authorization in this same transaction. */
+export async function loadSavedRepositoryPlan(
+  client: PoolClient,
+  access: TeamAccess,
+  planId: string,
+): Promise<SavedRepositoryPlan> {
+  const row = (
+    await client.query<PlanRow>(
+      "SELECT * FROM repository_plans WHERE id=$1 AND organization_id=$2 AND team_id=$3",
+      [planId, access.organizationId, access.team.id],
+    )
+  ).rows[0];
+  if (!row)
+    throw new ApiFailure(
+      404,
+      "NOT_FOUND",
+      "The requested repository plan was not found.",
+    );
+  return response(row).repositoryPlan;
 }
 
 export class RepositoryPlanService {
@@ -178,7 +200,7 @@ export class RepositoryPlanService {
       await this.identity.recheckSessionExpiry(access, client);
       return RepositoryPlanPreviewResponseSchema.parse({
         plan,
-        planDigest: digest(plan),
+        planDigest: repositoryPlanDigest(plan),
       });
     });
   }
@@ -205,7 +227,7 @@ export class RepositoryPlanService {
         return { created: false, response: replay(existing, access, input) };
       }
       const { plan, workspaceName } = await this.compile(client, access, input);
-      const planDigest = digest(plan);
+      const planDigest = repositoryPlanDigest(plan);
       await this.identity.recheckSessionExpiry(access, client);
       const inserted = (
         await client.query<PlanRow>(
@@ -265,20 +287,13 @@ export class RepositoryPlanService {
         client,
         readOnly: true,
       });
-      const row = (
-        await client.query<PlanRow>(
-          "SELECT * FROM repository_plans WHERE id=$1 AND organization_id=$2 AND team_id=$3",
-          [planId, access.organizationId, access.team.id],
-        )
-      ).rows[0];
-      if (!row)
-        throw new ApiFailure(
-          404,
-          "NOT_FOUND",
-          "The requested repository plan was not found.",
-        );
+      const repositoryPlan = await loadSavedRepositoryPlan(
+        client,
+        access,
+        planId,
+      );
       await this.identity.recheckSessionExpiry(access, client);
-      return response(row);
+      return { repositoryPlan };
     });
   }
 

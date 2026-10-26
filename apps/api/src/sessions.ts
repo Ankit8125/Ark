@@ -35,6 +35,12 @@ import { ApiFailure } from "./errors.js";
 import { validateFlowDependencies } from "./flow-dependencies.js";
 import type { IdentityService, TeamAccess } from "./identity.js";
 import { runnerBearer } from "./runners.js";
+import {
+  authenticateWorkRunner,
+  lockWorkRunner,
+  lockWorkStarter,
+  mayUseWorkRunner,
+} from "./work-authorization.js";
 
 interface SessionRow {
   id: string;
@@ -61,6 +67,7 @@ interface SessionRow {
 interface LeaseRow {
   id: string;
   session_id: string;
+  runtime: "stub.v1" | "repository.v1";
   runner_id: string;
   team_id: string;
   organization_id: string;
@@ -69,15 +76,6 @@ interface LeaseRow {
   token_hash: string;
   expires_at: Date;
   status: "active" | "uncertain" | "released";
-}
-interface RunnerRow {
-  id: string;
-  team_id: string;
-  organization_id: string;
-  credential_hash: string | null;
-  enrolled_at: Date | null;
-  revoked_at: Date | null;
-  dispatch_approved: boolean;
 }
 interface EventRow {
   session_id: string;
@@ -117,13 +115,6 @@ function conflict(
   message = "The session changed. Refresh before continuing.",
 ): ApiFailure {
   return new ApiFailure(409, "SESSION_CONFLICT", message);
-}
-function machineDenied(): ApiFailure {
-  return new ApiFailure(
-    401,
-    "RUNNER_UNAUTHENTICATED",
-    "The runner credential is unavailable or no longer valid.",
-  );
 }
 function leaseDenied(): ApiFailure {
   return new ApiFailure(
@@ -254,84 +245,15 @@ async function lockSession(
   if (!row) throw notFound();
   return row;
 }
-async function lockRunner(
-  client: PoolClient,
-  id: string,
-  organizationId?: string,
-  teamId?: string,
-): Promise<RunnerRow> {
-  const row = (
-    await client.query<RunnerRow>(
-      `SELECT * FROM runners WHERE id=$1
-    AND ($2::uuid IS NULL OR organization_id=$2) AND ($3::uuid IS NULL OR team_id=$3) FOR UPDATE`,
-      [id, organizationId ?? null, teamId ?? null],
-    )
-  ).rows[0];
-  if (!row)
-    throw new ApiFailure(
-      404,
-      "NOT_FOUND",
-      "The requested runner was not found.",
-    );
-  return row;
-}
 async function lockLease(client: PoolClient, id: string): Promise<LeaseRow> {
   const row = (
     await client.query<LeaseRow>(
-      "SELECT * FROM session_leases WHERE id=$1 FOR UPDATE",
+      "SELECT * FROM session_leases WHERE id=$1 AND runtime='stub.v1' FOR UPDATE",
       [id],
     )
   ).rows[0];
   if (!row) throw leaseDenied();
   return row;
-}
-async function lockStarter(
-  client: PoolClient,
-  row: Pick<SessionRow, "started_by" | "organization_id" | "team_id">,
-): Promise<boolean> {
-  // Existing inactive rows are locked too. Eligibility is decided after waits,
-  // and no identity lock is acquired after the runner lock.
-  const identity = (
-    await client.query<{ disabled_at: Date | null; revoked_at: Date | null }>(
-      `SELECT u.disabled_at,om.revoked_at FROM users u JOIN organization_memberships om ON om.user_id=u.id
-     WHERE u.id=$1 AND om.organization_id=$2 FOR SHARE OF u,om`,
-      [row.started_by, row.organization_id],
-    )
-  ).rows[0];
-  const membership = (
-    await client.query<{ role: string; revoked_at: Date | null }>(
-      "SELECT role,revoked_at FROM team_memberships WHERE user_id=$1 AND team_id=$2 AND organization_id=$3 FOR SHARE",
-      [row.started_by, row.team_id, row.organization_id],
-    )
-  ).rows[0];
-  return (
-    !!identity &&
-    !identity.disabled_at &&
-    !identity.revoked_at &&
-    !!membership &&
-    !membership.revoked_at &&
-    ["admin", "developer"].includes(membership.role)
-  );
-}
-async function mayUse(
-  client: PoolClient,
-  runner: RunnerRow,
-  userId: string,
-  eligible: boolean,
-): Promise<boolean> {
-  if (
-    !eligible ||
-    !runner.enrolled_at ||
-    runner.revoked_at ||
-    !runner.dispatch_approved
-  )
-    return false;
-  return !!(
-    await client.query(
-      "SELECT 1 FROM runner_use_grants WHERE runner_id=$1 AND user_id=$2 AND granted",
-      [runner.id, userId],
-    )
-  ).rowCount;
 }
 async function transition(
   client: PoolClient,
@@ -478,13 +400,13 @@ export class SessionService {
         client,
       });
       const snapshot = await this.snapshot(client, access, input);
-      const runner = await lockRunner(
+      const runner = await lockWorkRunner(
         client,
         input.runnerId,
         access.organizationId,
         teamId,
       );
-      if (!(await mayUse(client, runner, access.userId, true)))
+      if (!(await mayUseWorkRunner(client, runner, access.userId, true)))
         throw new ApiFailure(
           403,
           "COMPUTE_FORBIDDEN",
@@ -536,7 +458,7 @@ export class SessionService {
       if (existing) {
         // Replay uses saved pins, not today's catalog revisions or archive state.
         this.replay(existing, access, input);
-        await lockRunner(
+        await lockWorkRunner(
           client,
           existing.runner_id,
           access.organizationId,
@@ -555,7 +477,7 @@ export class SessionService {
         };
       }
       const snapshot = await this.snapshot(client, access, input);
-      const runner = await lockRunner(
+      const runner = await lockWorkRunner(
         client,
         input.runnerId,
         access.organizationId,
@@ -575,7 +497,7 @@ export class SessionService {
           response: this.replay(existing, access, input),
         };
       }
-      if (!(await mayUse(client, runner, access.userId, true)))
+      if (!(await mayUseWorkRunner(client, runner, access.userId, true)))
         throw new ApiFailure(
           403,
           "COMPUTE_FORBIDDEN",
@@ -748,7 +670,7 @@ export class SessionService {
           "FORBIDDEN",
           "Only a team admin or this session's eligible starter can cancel it.",
         );
-      await lockRunner(
+      await lockWorkRunner(
         client,
         candidate.runner_id,
         access.organizationId,
@@ -757,7 +679,7 @@ export class SessionService {
       let row = await lockSession(client, id, teamId, access.organizationId);
       const lease = (
         await client.query<LeaseRow>(
-          "SELECT * FROM session_leases WHERE session_id=$1 FOR UPDATE",
+          "SELECT * FROM session_leases WHERE session_id=$1 AND runtime='stub.v1' FOR UPDATE",
           [id],
         )
       ).rows[0];
@@ -807,7 +729,7 @@ export class SessionService {
         )
       ).rows[0];
       if (!candidate) throw notFound();
-      const runner = await lockRunner(
+      const runner = await lockWorkRunner(
         client,
         candidate.runner_id,
         access.organizationId,
@@ -816,7 +738,7 @@ export class SessionService {
       let row = await lockSession(client, id, teamId, access.organizationId);
       const lease = (
         await client.query<LeaseRow>(
-          "SELECT * FROM session_leases WHERE session_id=$1 FOR UPDATE",
+          "SELECT * FROM session_leases WHERE session_id=$1 AND runtime='stub.v1' FOR UPDATE",
           [id],
         )
       ).rows[0];
@@ -844,21 +766,6 @@ export class SessionService {
     });
   }
 
-  private async authenticatedRunner(
-    client: PoolClient,
-    credential: ReturnType<typeof runnerBearer>,
-    lock = false,
-  ): Promise<RunnerRow> {
-    const row = (
-      await client.query<RunnerRow>(
-        `SELECT * FROM runners WHERE id=$1 AND credential_hash=$2 ${lock ? "FOR UPDATE" : ""}`,
-        [credential.id, credential.hash],
-      )
-    ).rows[0];
-    if (!row || !row.enrolled_at || row.revoked_at) throw machineDenied();
-    return row;
-  }
-
   async claim(
     authorization: string | undefined,
     input: SessionClaimRequest,
@@ -867,7 +774,7 @@ export class SessionService {
     const tokenHash = hash(input.leaseToken);
     for (let attempt = 0; attempt < 4; attempt++) {
       const result = await withTransaction(this.pool, async (client) => {
-        const discovered = await this.authenticatedRunner(client, credential);
+        const discovered = await authenticateWorkRunner(client, credential);
         let lease = (
           await client.query<LeaseRow>(
             "SELECT * FROM session_leases WHERE id=$1",
@@ -876,7 +783,9 @@ export class SessionService {
         ).rows[0];
         if (
           lease &&
-          (lease.runner_id !== discovered.id || lease.token_hash !== tokenHash)
+          (lease.runtime !== "stub.v1" ||
+            lease.runner_id !== discovered.id ||
+            lease.token_hash !== tokenHash)
         )
           throw conflict("This claim identity already has different details.");
         const candidate = (
@@ -894,9 +803,9 @@ export class SessionService {
           )
         ).rows[0];
         const eligible = candidate
-          ? await lockStarter(client, candidate)
+          ? await lockWorkStarter(client, candidate)
           : false;
-        const runner = await this.authenticatedRunner(client, credential, true);
+        const runner = await authenticateWorkRunner(client, credential, true);
         const repeated = (
           await client.query<LeaseRow>(
             "SELECT * FROM session_leases WHERE id=$1",
@@ -905,7 +814,8 @@ export class SessionService {
         ).rows[0];
         if (
           repeated &&
-          (repeated.runner_id !== runner.id ||
+          (repeated.runtime !== "stub.v1" ||
+            repeated.runner_id !== runner.id ||
             repeated.token_hash !== tokenHash)
         )
           throw conflict("This claim identity already has different details.");
@@ -924,7 +834,12 @@ export class SessionService {
             const expired = lease.expires_at <= (await clock(client));
             if (
               expired ||
-              !(await mayUse(client, runner, row.started_by, eligible))
+              !(await mayUseWorkRunner(
+                client,
+                runner,
+                row.started_by,
+                eligible,
+              ))
             )
               ({ row, lease } = await uncertain(
                 client,
@@ -942,7 +857,12 @@ export class SessionService {
         if (
           held.rowCount ||
           !candidate ||
-          !(await mayUse(client, runner, candidate.started_by, eligible))
+          !(await mayUseWorkRunner(
+            client,
+            runner,
+            candidate.started_by,
+            eligible,
+          ))
         )
           return { job: null };
         let row = await lockSession(
@@ -955,8 +875,9 @@ export class SessionService {
         row = await transition(client, row, "running", null);
         lease = (
           await client.query<LeaseRow>(
-            `INSERT INTO session_leases(id,session_id,runner_id,team_id,organization_id,workspace_id,token_hash,expires_at,status)
-          VALUES($1,$2,$3,$4,$5,$6,$7,clock_timestamp()+($8*interval '1 second'),'active') RETURNING *`,
+            `INSERT INTO session_leases(id,session_id,runtime,runner_id,team_id,organization_id,workspace_id,token_hash,expires_at,status)
+          VALUES($1,$2,'stub.v1',$3,$4,$5,$6,$7,clock_timestamp()+($8*interval '1 second'),'active')
+          ON CONFLICT(id) DO NOTHING RETURNING *`,
             [
               input.claimId,
               row.id,
@@ -968,7 +889,9 @@ export class SessionService {
               SESSION_LEASE_SECONDS,
             ],
           )
-        ).rows[0]!;
+        ).rows[0];
+        if (!lease)
+          throw conflict("This claim identity already has different details.");
         await appendEvent(client, row, "claimed", randomUUID(), lease.id, {
           claimId: input.claimId,
           runtime: input.runtime,
@@ -989,10 +912,10 @@ export class SessionService {
   ): Promise<SessionJob> {
     const credential = runnerBearer(authorization, "runner");
     return withTransaction(this.pool, async (client) => {
-      const discovered = await this.authenticatedRunner(client, credential);
+      const discovered = await authenticateWorkRunner(client, credential);
       const candidateLease = (
         await client.query<LeaseRow>(
-          "SELECT * FROM session_leases WHERE id=$1 AND runner_id=$2",
+          "SELECT * FROM session_leases WHERE id=$1 AND runner_id=$2 AND runtime='stub.v1'",
           [input.leaseId, discovered.id],
         )
       ).rows[0];
@@ -1009,8 +932,10 @@ export class SessionService {
       ).rows[0];
       if (!candidate) throw leaseDenied();
       const eligible =
-        input.kind === "stopped" ? false : await lockStarter(client, candidate);
-      const runner = await this.authenticatedRunner(client, credential, true);
+        input.kind === "stopped"
+          ? false
+          : await lockWorkStarter(client, candidate);
+      const runner = await authenticateWorkRunner(client, credential, true);
       let row = await lockSession(
         client,
         candidate.id,
@@ -1045,7 +970,7 @@ export class SessionService {
           const expired = lease.expires_at <= (await clock(client));
           if (
             expired ||
-            !(await mayUse(client, runner, row.started_by, eligible))
+            !(await mayUseWorkRunner(client, runner, row.started_by, eligible))
           )
             ({ row, lease } = await uncertain(
               client,
@@ -1078,7 +1003,12 @@ export class SessionService {
         return job(row, lease);
       }
       const expired = lease.expires_at <= (await clock(client));
-      const permitted = await mayUse(client, runner, row.started_by, eligible);
+      const permitted = await mayUseWorkRunner(
+        client,
+        runner,
+        row.started_by,
+        eligible,
+      );
       if (lease.status === "active" && (expired || !permitted))
         ({ row, lease } = await uncertain(
           client,
@@ -1190,13 +1120,13 @@ export class SessionService {
   async expireLeases(): Promise<number> {
     const candidates = (
       await this.pool.query<LeaseRow>(
-        "SELECT * FROM session_leases WHERE status='active' AND expires_at<=clock_timestamp() ORDER BY expires_at,id LIMIT 100",
+        "SELECT * FROM session_leases WHERE runtime='stub.v1' AND status='active' AND expires_at<=clock_timestamp() ORDER BY expires_at,id LIMIT 100",
       )
     ).rows;
     let changed = 0;
     for (const candidate of candidates) {
       const expired = await withTransaction(this.pool, async (client) => {
-        await lockRunner(client, candidate.runner_id);
+        await lockWorkRunner(client, candidate.runner_id);
         let row = await lockSession(client, candidate.session_id);
         let lease = await lockLease(client, candidate.id);
         if (

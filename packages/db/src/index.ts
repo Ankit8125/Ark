@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import pg from "pg";
 import type { Pool, PoolClient } from "pg";
 
-export const expectedMigrationVersion = "009_repository_plans";
+export const expectedMigrationVersion = "010_repository_execution_control";
 const migrations = [
   "001_identity",
   "002_workspaces",
@@ -13,6 +13,7 @@ const migrations = [
   "006_runner_enrollment",
   "007_runner_compute_controls",
   "008_durable_sessions",
+  "009_repository_plans",
   expectedMigrationVersion,
 ];
 

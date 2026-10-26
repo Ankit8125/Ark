@@ -88,10 +88,13 @@ ark/
 |   |   |-- versioned-catalog.ts    # Shared authorized transactions and SQL
 |   |   |-- runner-routes.ts        # Human runner/access and machine HTTP routes
 |   |   |-- runners.ts             # Identity, lifecycle, health, approval, and grants
+|   |   |-- work-authorization.ts  # Shared locked starter/runner eligibility for work
 |   |   |-- session-routes.ts       # Human commands/events and machine session routes
 |   |   |-- sessions.ts             # Durable queue, snapshots, leases, events, recovery
 |   |   |-- repository-plan-routes.ts # Authorized preview/save/list/detail endpoints
 |   |   |-- repository-plans.ts     # Immutable unverified plans, replay, digest, audit
+|   |   |-- repository-execution-routes.ts # Admission, JSON events and machine control
+|   |   |-- repository-executions.ts # Plan-bound admission, preparation leases/control
 |   |   |-- session-engine.ts       # Lease-expiry reconciliation loop
 |   |   |-- engine.ts               # Separate reconciliation process entrypoint
 |   |   |-- credentials.ts          # Password and session-token operations
@@ -115,6 +118,7 @@ ark/
 |   |   |-- sessions.ts             # Session schemas, typed bindings, pure stub evaluator
 |   |   |-- repository-command-plan.ts # Pure selected-command plans and frozen v1 serialization
 |   |   |-- repository-plans.ts     # Strict saved-plan API envelopes and metadata
+|   |   |-- repository-executions.ts # Isolated repository admission/control contracts
 |   |   `-- catalog-text.ts         # Shared PostgreSQL-safe text validator
 |   `-- db/
 |       |-- src/index.ts            # Pool, transactions, migration runner
@@ -127,7 +131,8 @@ ark/
 |           |-- 006_runner_enrollment.sql
 |           |-- 007_runner_compute_controls.sql
 |           |-- 008_durable_sessions.sql
-|           `-- 009_repository_plans.sql
+|           |-- 009_repository_plans.sql
+|           `-- 010_repository_execution_control.sql
 |-- scripts/
 |   |-- lib/local-database-url.mjs   # Local maintenance/test URL validation
 |   |-- lib/local-database-url.d.mts # Types for the JavaScript helper
@@ -182,7 +187,11 @@ The CLI sends heartbeats every 15 seconds; a server observation older than 60 se
 
 The separate engine marks expired 45-second work leases uncertain; it does not release their reserved runner slot or execute stages. Registration heartbeats do not renew these work leases. Queued cancel is immediate, while active cancel waits for stopped acknowledgement. If the process or credential is lost, an admin revokes the runner and explicitly confirms the stub has stopped before manual reconciliation releases ownership. Session detail reads and each SSE batch recheck the human reader; the UI verifies sequence replay, clears data on access loss, and uses bounded reconnects with manual recovery controls. A terminal detail read drains bounded HTTP journal pages before reporting that saved history is current; failures remain visibly retryable.
 
-`pnpm.cmd dev` starts API, engine, and web together; the foreground runner remains a separate opt-in process. This adds no dependency or external workflow service. Only `stub.v1` executes, with session quality `not_evaluated`; repository actions, Agent instructions, requested capabilities, and model preferences are not executed. The [October 25 record](../progress/2026-10-25-01-durable-sessions.md) records 130 distinct focused cases across runs, browser acceptance, and verified cleanup, without repeating broad suites. The next [V0.5 planning slice](../progress/2026-10-25-02-repository-planning.md) adds a recorded contract and pure shared command-plan compiler; plan storage, API/runner/UI integration, actual isolation/commands, and model calls remain future work.
+`pnpm.cmd dev` starts API, engine, and web together; the foreground runner remains a separate opt-in process. This adds no dependency or external workflow service. Only `stub.v1` executes through the current CLI, with session quality `not_evaluated`; repository actions, Agent instructions, requested capabilities, and model preferences are not executed. The [October 25 record](../progress/2026-10-25-01-durable-sessions.md) records 130 distinct focused cases across runs, browser acceptance, and verified cleanup, without repeating broad suites.
+
+V0.5 first adds a [pure command-plan compiler](16-repository-planning.md) and a [saved-plan API](17-saved-repository-plans.md). Current team members preview/read plans; admins/developers save immutable intent with a canonical digest. Planning needs no compute permission. The saved-plan API is verified locally, while actual repository work remains future.
+
+The new [repository admission/control slice](18-repository-execution-control.md) is verified locally in its [record of focused checks and cleanup](../progress/2026-10-26-02-repository-execution-control.md). One standalone saved action binds its plan/digest and Workspace pin; it creates no artificial Flow/Agent. Admission rechecks current role and the user's own runner grant. Dedicated bearer claim/control endpoints declare repository protocol compatibility and authorize preparation only, without proving sandbox capability. Migration 010 shares the existing active-or-uncertain lease index across both runtimes and stores repository lifecycle events and token-free control receipts. Independent control sequences and fixed deadlines make renewal/replay separate from lifecycle revisions. The engine expires each runtime without releasing ownership. No repository command-start, completion, stopped/release or manual-reconcile endpoint, actual adapter, repository CLI worker, or UI is present; preparation/process/cleanup evidence and report binding come next.
 
 Extract a repository abstraction when persistence needs a real alternative or repeated query boundaries become difficult to test. Until then, parameterized SQL and injected pools keep transaction ownership visible. API, reconciliation engine, and foreground runner have distinct entrypoints because their process lifetimes and authority differ; a separate orchestration service is not required.
 
@@ -202,7 +211,7 @@ pnpm.cmd test:integration
 pnpm.cmd test:guard
 ```
 
-`test:unit` includes React DOM tests in jsdom as well as contracts, runner client behavior, and infrastructure checks. jsdom is development-only and does not replace a real browser walkthrough. The list above is the available check set, not a requirement to repeat every suite for each small change. Integration tests need the already-provisioned local `ark_test` database and Docker running. Run `pnpm.cmd db:prepare` after pulling a new migration; migration 009 adds immutable saved plans after 008 durable sessions, 007 compute controls, and 006 runner enrollment. That command prepares the development database, while `pnpm.cmd db:test:prepare` provisions the separate test database. Test fixtures own and clean up only their generated schemas. Consult the dated progress record for actual focused results, skipped checks, and acceptance limits.
+`test:unit` includes React DOM tests in jsdom as well as contracts, runner client behavior, and infrastructure checks. jsdom is development-only and does not replace a real browser walkthrough. The list above is the available check set, not a requirement to repeat every suite for each small change. Integration tests need the already-provisioned local `ark_test` database and Docker running. Run `pnpm.cmd db:prepare` after pulling a new migration; migration 010 adds repository admission/preparation control after 009 saved plans, 008 durable sessions, 007 compute controls, and 006 runner enrollment. That command prepares the development database, while `pnpm.cmd db:test:prepare` provisions the separate test database. Test fixtures own and clean up only their generated schemas. Consult the dated progress record for actual focused results, skipped checks, and acceptance limits.
 
 An error boundary handles rendering failures, not every asynchronous callback, failed event handler, or broken application download. Expected request failures continue through the API/form error paths. Logging intentionally trades detailed stack traces for privacy; adding richer diagnostics needs a reviewed, sanitized schema. No remote monitoring service was added. A sound V0.1 foundation is not a claim of production readiness or perfection.
 

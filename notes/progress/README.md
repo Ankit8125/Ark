@@ -4,7 +4,9 @@ Updated 2026-10-26 (Asia/Kolkata). Keep this page concise; detailed evidence bel
 
 ## Current checkpoint
 
-**V0.5 backend saved plans verified locally.** The [October 26 completion entry](2026-10-26-01-repository-plan-api-verification.md) and [October 25 implementation](2026-10-25-03-repository-plan-api.md) record immutable storage, authorized preview/Save/list/get, frozen plan digests, atomic replay/audit, 36 focused cases, restricted privileges, and cleanup. These non-dispatchable `planned_unverified` plans need no runner. Execution admission, work renewal, adapters, and UI remain future work; V0.5 is incomplete.
+**V0.5 repository admission and preparation control verified locally.** The [October 26 preparation-control entry](2026-10-26-02-repository-execution-control.md) records exact saved-plan/Workspace binding, current compute authorization, standalone queued executions, shared runner ownership, preparation-only claim/control, cancellation/expiry, 79 focused cases, populated upgrade coverage, restricted privileges, and cleanup. There is no repository command-start/completion/release endpoint, worker adapter, or UI yet; V0.5 is incomplete.
+
+The [saved-plan completion entry](2026-10-26-01-repository-plan-api-verification.md) and [implementation](2026-10-25-03-repository-plan-api.md) preserve immutable storage, authorized preview/Save/list/get, frozen digests, atomic replay/audit, and 36 earlier focused cases. Saved `planned_unverified` plans remain non-dispatchable until separately admitted and need no runner for planning.
 
 The [shared planning entry](2026-10-25-02-repository-planning.md) preserves the original contract/compiler and 18 earlier focused cases.
 
@@ -16,14 +18,14 @@ The [previous runner checkpoint](2026-10-20-01-runner-enrollment.md) preserves t
 
 | Area              | Evidence                                                                                                                                              |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Database          | Migrations 001–009; restricted ark_app, append-only events/plans, exclusive active/uncertain runner leases                                            |
-| Development setup | Zero users/catalog/runner/session records at the October 25 read-only check; first-owner setup remains available                                      |
+| Database          | Migrations 001–010; restricted ark_app, immutable plans/admission, append-only events/controls, global active/uncertain runner leases                 |
+| Development setup | Zero identity/catalog/runner/session/repository records at the October 26 check; first-owner setup remains available                                  |
 | Identity          | One-use atomic bootstrap, Argon2id, hashed opaque sessions, revocation checks                                                                         |
 | Authorization     | Explicit membership, admin/developer catalog writes, kind/team isolation, locked checks, last-owner guard                                             |
-| Automated tests   | Latest slice: 24 saved-plan API, 10 schema/serialization, and 2 migration cases passed; prior session/catalog evidence retained in dated records      |
+| Automated tests   | Latest slice: 14 schema, 32 repository control, 32 existing stub, and 1 populated-upgrade case passed; earlier evidence retained in dated records     |
 | UI                | Sessions lost-response replay, finite SSE, restart persistence, cancellation, natural expiry/admin recovery, reload, and desktop/mobile checks passed |
 | Tooling           | Production build, lint, and strict type checks passed                                                                                                 |
-| Scope             | Loopback development; pure stub orchestration with quality not_evaluated; repository/model work remains future                                        |
+| Scope             | Loopback development; runnable pure stub plus repository planning/admission/preparation controls; real repository commands and models remain future   |
 
 The [latest runner record](2026-10-20-01-runner-enrollment.md) distinguishes completed checks, recovery runs, limits, and verified QA cleanup. The [runner guide](../learning/13-local-runners.md) explains enrollment, health, revocation, and commands. The [template](../learning/12-catalog-templates.md), [archive](../learning/11-catalog-archive.md), [history](../learning/10-catalog-history.md), [Flow](../learning/09-flows.md), [Agent](../learning/08-agents.md), and [Workspace](../learning/07-workspaces.md) guides cover catalog behavior. The [architecture guide](../learning/06-project-architecture.md) maps implemented modules and boundaries.
 
@@ -59,6 +61,7 @@ The original V0.1 browser verification used separate test ports and a separate d
 | 2026-10-25 / 02 | [Repository contract and shared command planning](2026-10-25-02-repository-planning.md)        |
 | 2026-10-25 / 03 | [Immutable saved-plan API](2026-10-25-03-repository-plan-api.md)                               |
 | 2026-10-26 / 01 | [Saved-plan API completion](2026-10-26-01-repository-plan-api-verification.md)                 |
+| 2026-10-26 / 02 | [Repository admission and preparation control](2026-10-26-02-repository-execution-control.md)  |
 
 ## Synchronization
 
@@ -66,4 +69,4 @@ At the user's request, archive `b1554c6`, templates `37571f5`, and runner `725b4
 
 ## Next bounded step
 
-Define and implement repository execution admission, long-command control/renewal, and preparation/report binding under the [V0.5 contract](../findings/repository-execution.md) before connecting a real runner adapter. The [saved-plan slice](2026-10-25-03-repository-plan-api.md) is ready for that binding; the [V0.4 checkpoint](2026-10-25-01-durable-sessions.md) remains the runnable baseline. Keep declared source/image pins separate from observations and process status separate from quality. Use focused checks without repeated broad suites.
+Define preparation/process/cleanup receipts and trusted observation binding under the [preparation-control contract](../findings/repository-execution-control.md) before connecting a real runner adapter. Require exact plan/lease/generation and observed process/resource cleanup before command authorization or capacity release. Keep declared source/image pins separate from observations and process status separate from quality. The [V0.4 checkpoint](2026-10-25-01-durable-sessions.md) remains the runnable baseline; use focused checks without repeated broad suites.

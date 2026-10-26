@@ -21,6 +21,8 @@ import { SessionService } from "./sessions.js";
 import { registerSessionRoutes } from "./session-routes.js";
 import { RepositoryPlanService } from "./repository-plans.js";
 import { registerRepositoryPlanRoutes } from "./repository-plan-routes.js";
+import { RepositoryExecutionService } from "./repository-executions.js";
+import { registerRepositoryExecutionRoutes } from "./repository-execution-routes.js";
 
 export interface AppOptions {
   pool: Pool;
@@ -220,6 +222,10 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   registerRepositoryPlanRoutes(
     app,
     new RepositoryPlanService(options.pool, identity),
+  );
+  registerRepositoryExecutionRoutes(
+    app,
+    new RepositoryExecutionService(options.pool, identity),
   );
   await app.ready();
   return app;

@@ -2,6 +2,7 @@ import { createPool } from "@ark/db";
 import { IdentityService } from "./identity.js";
 import { SessionService } from "./sessions.js";
 import { runSessionEngine } from "./session-engine.js";
+import { RepositoryExecutionService } from "./repository-executions.js";
 
 const connection = process.env.DATABASE_URL;
 if (!connection)
@@ -18,11 +19,25 @@ process.on("SIGTERM", () => controller.abort());
 try {
   const identity = new IdentityService(pool, 43200);
   if (!(await identity.isReady())) throw new Error("Migrations are not ready.");
-  console.log(
-    "Session reconciliation engine ready. Deterministic stub work only.",
-  );
+  console.log("Stub and repository preparation lease reconciliation ready.");
+  const sessions = new SessionService(pool, identity);
+  const repositories = new RepositoryExecutionService(pool, identity);
   await runSessionEngine(
-    new SessionService(pool, identity),
+    {
+      expireLeases: async () => {
+        const results = await Promise.allSettled([
+          sessions.expireLeases(),
+          repositories.expireLeases(),
+        ]);
+        if (results.some((result) => result.status === "rejected"))
+          throw new Error("A work lease reconciliation pass failed.");
+        return results.reduce(
+          (count, result) =>
+            count + (result.status === "fulfilled" ? result.value : 0),
+          0,
+        );
+      },
+    },
     controller.signal,
     () => {
       console.error("Session reconciliation is unavailable; retrying.");
